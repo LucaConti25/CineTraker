@@ -1,6 +1,6 @@
 ﻿
 using CineTraker.Data;
-using CineTraker.Models;
+using CineTraker.Shared;
 using CineTraker.Services;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;

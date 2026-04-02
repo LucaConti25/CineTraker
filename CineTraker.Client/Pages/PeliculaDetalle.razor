@@ -1,0 +1,162 @@
+﻿@page "/pelicula/{Id:int}"
+@using CineTraker.Shared
+@inject HttpClient Http
+@inject NavigationManager Navigation
+
+<div class="container py-5">
+    @if (pelicula == null)
+    {
+            <div class="text-center mt-5">
+                <div class="spinner-border text-danger" role="status"></div>
+                <p class="text-muted mt-2">Cargando detalles de la película...</p>
+            </div>
+    }
+    else
+    {
+        @* Botón para volver al inicio *@
+            <button class="btn btn-outline-secondary mb-4" @onclick='() => Navigation.NavigateTo("/")'>
+                <i class="bi bi-arrow-left"></i> Volver al catálogo
+            </button>
+
+            <div class="row">
+            @* COLUMNA IZQUIERDA: Póster *@
+                <div class="col-md-4 mb-4">
+                    <img src="@pelicula.PosterUrl" class="img-fluid rounded shadow-lg w-100" alt="@pelicula.Title" />
+
+                @* ESPACIO PARA STREAMING *@
+                    <div class="mt-4 p-3 rounded" style="background-color: #1a1a1a; border: 1px solid #333;">
+                        <h6 class="text-muted mb-3 small fw-bold text-uppercase">Disponible en:</h6>
+                        <div class="d-flex gap-2">
+                            <div class="badge border border-secondary p-2 text-muted">Netflix</div>
+                            <div class="badge border border-secondary p-2 text-muted">HBO Max</div>
+                        </div>
+                    </div>
+                </div>
+
+            @* COLUMNA DERECHA: Información *@
+                <div class="col-md-8 text-light">
+                    <h1 class="display-4 fw-bold">@pelicula.Title</h1>
+                    <p class="lead text-muted">@pelicula.Year | Dirigida por @pelicula.Director</p>
+
+                    <hr class="border-secondary" />
+
+                    <h5 class="fw-bold text-info">Sinopsis</h5>
+                    <p style="font-size: 1.1rem; line-height: 1.6;">@pelicula.Plot</p>
+
+                @* SECCIÓN DE PUNTUACIÓN *@
+                    <div class="mt-5 p-4 rounded shadow-sm" style="background-color: #1e1e1e; border: 1px solid #333;">
+                        <h4 class="text-light mb-3">⭐ Dejá tu puntuación</h4>
+
+                        <div class="mb-3 d-flex gap-2">
+                        @for (int i = 1; i <= 5; i++)
+                        {
+                            int starIndex = i;
+                                    <i class="bi @(starIndex <= puntajeSeleccionado ? "bi-star-fill text-warning" : "bi-star text-secondary")" 
+                                       style="cursor: pointer; font-size: 2rem;" 
+                                       @onclick="() => SeleccionarPuntaje(starIndex)"></i>
+                        }
+                        </div>
+
+                        <textarea class="form-control bg-dark text-light border-secondary mb-3 shadow-none" 
+                                  rows="3" placeholder="Escribí una breve reseña..." 
+                                  @bind="comentarioUsuario"></textarea>
+
+                        <button class="btn btn-warning fw-bold px-4 shadow" @onclick="GuardarReview" disabled="@estaGuardando">
+                        @if (estaGuardando)
+                        {
+                                    <span class="spinner-border spinner-border-sm me-2"></span>
+                        } 
+                            Guardar Review
+                        </button>
+                    </div>
+                </div> 
+            </div> 
+
+        @* --- LISTADO DE RESEÑAS EXISTENTES  --- *@
+            <div class="mt-5 pt-4 border-top border-secondary">
+                <h3 class="text-light mb-4">Comentarios de CineTrakers</h3>
+
+            @if (reviewsExistentes == null || !reviewsExistentes.Any())
+            {
+                        <div class="p-4 rounded bg-dark text-center text-muted border border-secondary border-dashed">
+                            <i class="bi bi-chat-dots d-block mb-2" style="font-size: 2rem;"></i>
+                            Nadie comentó todavía sobre "@pelicula.Title". ¡Sé el primero!
+                        </div>
+            }
+            else
+            {
+                        <div class="row row-cols-1 g-3">
+                    @foreach (var rev in reviewsExistentes)
+                    {
+                                    <div class="col">
+                                        <div class="card bg-dark border-secondary shadow-sm">
+                                            <div class="card-body">
+                                                <div class="d-flex justify-content-between align-items-start">
+                                                    <div class="text-warning mb-2">
+                                            @for (int i = 1; i <= 5; i++)
+                                            {
+                                                                <i class="bi @(i <= rev.Stars ? "bi-star-fill" : "bi-star text-secondary")"></i>
+                                            }
+                                                    </div>
+                                                    <span class="text-muted small">#@rev.Id</span>
+                                                </div>
+                                                <p class="text-light mb-0" style="white-space: pre-wrap;">@rev.Comment</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                    }
+                        </div>
+            }
+            </div>
+    }
+</div>
+
+
+
+@code {
+    [Parameter] public int Id { get; set; }
+    private Movie? pelicula;
+    private List<Review> reviewsExistentes = new(); 
+    private int puntajeSeleccionado = 0;
+    private string comentarioUsuario = "";
+    private bool estaGuardando = false;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await CargarDatos();
+    }
+
+    private async Task CargarDatos()
+    {
+        try
+        {
+            pelicula = await Http.GetFromJsonAsync<Movie>($"api/Movies/{Id}");
+            reviewsExistentes = await Http.GetFromJsonAsync<List<Review>>($"api/Reviews/movie/{Id}");
+        }
+        catch (Exception ex) { Console.WriteLine($"Error: {ex.Message}"); }
+    }
+
+    private void SeleccionarPuntaje(int stars) => puntajeSeleccionado = stars;
+
+    private async Task GuardarReview()
+    {
+        if (puntajeSeleccionado == 0) return;
+        estaGuardando = true;
+
+        var nueva = new Review
+            {
+                MovieId = Id,
+                Stars = puntajeSeleccionado,
+                Comment = comentarioUsuario
+            };
+
+        var res = await Http.PostAsJsonAsync("api/Reviews", nueva);
+        if (res.IsSuccessStatusCode)
+        {
+            comentarioUsuario = "";
+            puntajeSeleccionado = 0;
+            await CargarDatos(); 
+        }
+        estaGuardando = false;
+    }
+}

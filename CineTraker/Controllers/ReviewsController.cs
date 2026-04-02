@@ -1,6 +1,6 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using CineTraker.Data;
-using CineTraker.Models;
+using CineTraker.Shared;
 using Microsoft.EntityFrameworkCore;
 
 [Route("api/[controller]")]
@@ -29,32 +29,51 @@ public class ReviewsController : ControllerBase
 
 
     [HttpGet("movie/{movieId}")]
-    public async Task<IActionResult> GetReviewsByMovie(int movieId)
+    public async Task<ActionResult<IEnumerable<Review>>> GetReviewsByMovie(int movieId)
     {
-        var movieExists = await _context.Movies.AnyAsync(m => m.Id == movieId);
-
-        if (!movieExists)
-        {
-            return NotFound(new
-            {
-                error = "Película no encontrada",
-                detalle = $"No existe ninguna película con el ID {movieId} en CineTraker."
-            });
-        }
-
+        // Buscamos las reviews filtradas por película
         var reviews = await _context.Reviews
             .Where(r => r.MovieId == movieId)
+            .OrderByDescending(r => r.Id) // Las más recientes arriba
             .ToListAsync();
 
-        if (reviews == null || !reviews.Any())
+        // Siempre devolvemos una lista, cumpliendo el contrato con el Frontend
+        return Ok(reviews);
+    }
+
+
+    [HttpPut("{id}")]
+    public async Task<IActionResult> UpdateReview(int id, Review updatedReview)
+    {
+        if (id != updatedReview.Id) return BadRequest("El ID no coincide.");
+
+        var review = await _context.Reviews.FindAsync(id);
+        if (review == null) return NotFound("La reseña no existe.");
+
+        review.Comment = updatedReview.Comment;
+        review.Stars = updatedReview.Stars;
+        try
         {
-            return Ok(new
-            {
-                mensaje = "Esta película aún no tiene reseñas.",
-                sugerencia = "¡Podés ser el primero en calificarla usando el método POST!"
-            });
+            await _context.SaveChangesAsync();
+        }
+        catch (DbUpdateConcurrencyException)
+        {
+            return StatusCode(500, "Error al actualizar la base de datos.");
         }
 
-        return Ok(reviews);
+        return NoContent();
+    }
+
+    
+    [HttpDelete("{id}")]
+    public async Task<IActionResult> DeleteReview(int id)
+    {
+        var review = await _context.Reviews.FindAsync(id);
+        if (review == null) return NotFound("Reseña no encontrada.");
+
+        _context.Reviews.Remove(review);
+        await _context.SaveChangesAsync();
+
+        return Ok(new { mensaje = $"Reseña con ID {id} eliminada correctamente." });
     }
 }

@@ -12,6 +12,16 @@ namespace CineTraker
             
             var builder = WebApplication.CreateBuilder(args);
 
+
+            builder.Services.AddCors(options =>
+            {
+                options.AddPolicy("AllowBlazor", policy =>
+                {
+                    policy.AllowAnyOrigin() 
+                          .AllowAnyMethod()
+                          .AllowAnyHeader();
+                });
+            });
             // Add services to the container.
 
             builder.Services.AddControllers();
@@ -24,7 +34,21 @@ namespace CineTraker
 
             builder.Services.AddHttpClient<MovieService>();
 
+
+            builder.Services.AddCors(options =>
+            {
+                options.AddDefaultPolicy(policy =>
+                {
+                    policy.AllowAnyOrigin()
+                          .AllowAnyHeader()
+                          .AllowAnyMethod();
+                });
+            });
+
             var app = builder.Build();
+
+            app.UseCors();
+            app.UseCors("AllowBlazor");
 
             // Configure the HTTP request pipeline.
             if (app.Environment.IsDevelopment())

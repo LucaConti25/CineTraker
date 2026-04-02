@@ -1,4 +1,4 @@
-﻿using CineTraker.Models;
+﻿using CineTraker.Shared;
 using Microsoft.EntityFrameworkCore;
 
 namespace CineTraker.Data
