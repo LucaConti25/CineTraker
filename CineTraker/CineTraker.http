@@ -1,0 +1,6 @@
+@CineTraker_HostAddress = http://localhost:5100
+
+GET {{CineTraker_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
