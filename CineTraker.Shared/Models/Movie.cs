@@ -19,5 +19,20 @@ namespace CineTraker.Shared
         public string? Plot { get; set; }
 
         public string? ImdbID { get; set; }
+
+        public string SafePosterUrl
+        {
+            get
+            {
+                if (string.IsNullOrWhiteSpace(PosterUrl) || PosterUrl == "N/A")
+                {
+                    
+                    return "https://placehold.co/300x450?text=Sin+Poster";
+
+                }
+
+                return PosterUrl;
+            }
+        }
     }
 }

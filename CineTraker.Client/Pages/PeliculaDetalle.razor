@@ -13,17 +13,16 @@
     }
     else
     {
-        @* Botón para volver al inicio *@
             <button class="btn btn-outline-secondary mb-4" @onclick='() => Navigation.NavigateTo("/")'>
                 <i class="bi bi-arrow-left"></i> Volver al catálogo
             </button>
 
             <div class="row">
-            @* COLUMNA IZQUIERDA: Póster *@
+
                 <div class="col-md-4 mb-4">
                     <img src="@pelicula.PosterUrl" class="img-fluid rounded shadow-lg w-100" alt="@pelicula.Title" />
 
-                @* ESPACIO PARA STREAMING *@
+                @* esto es lo de streaming, no funciona todavia*@
                     <div class="mt-4 p-3 rounded" style="background-color: #1a1a1a; border: 1px solid #333;">
                         <h6 class="text-muted mb-3 small fw-bold text-uppercase">Disponible en:</h6>
                         <div class="d-flex gap-2">
@@ -33,7 +32,7 @@
                     </div>
                 </div>
 
-            @* COLUMNA DERECHA: Información *@
+
                 <div class="col-md-8 text-light">
                     <h1 class="display-4 fw-bold">@pelicula.Title</h1>
                     <p class="lead text-muted">@pelicula.Year | Dirigida por @pelicula.Director</p>
@@ -43,7 +42,7 @@
                     <h5 class="fw-bold text-info">Sinopsis</h5>
                     <p style="font-size: 1.1rem; line-height: 1.6;">@pelicula.Plot</p>
 
-                @* SECCIÓN DE PUNTUACIÓN *@
+                
                     <div class="mt-5 p-4 rounded shadow-sm" style="background-color: #1e1e1e; border: 1px solid #333;">
                         <h4 class="text-light mb-3">⭐ Dejá tu puntuación</h4>
 
@@ -72,7 +71,7 @@
                 </div> 
             </div> 
 
-        @* --- LISTADO DE RESEÑAS EXISTENTES  --- *@
+        
             <div class="mt-5 pt-4 border-top border-secondary">
                 <h3 class="text-light mb-4">Comentarios de CineTrakers</h3>
 
