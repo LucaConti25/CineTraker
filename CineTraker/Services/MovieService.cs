@@ -44,7 +44,8 @@ namespace CineTraker.Services
                     Year = int.Parse(response.Year.Substring(0, 4)),
                     Director = response.Director,
                     Plot = response.Plot,
-                    PosterUrl = response.Poster
+                    PosterUrl = response.Poster,
+                    ImdbID = response.imdbID
                 };
             }
             return null;
@@ -57,7 +58,7 @@ namespace CineTraker.Services
 
             foreach (var id in ids)
             {
-                if (!await _context.Movies.AnyAsync(m => m.Title.Contains(id) || m.PosterUrl.Contains(id)))
+                if (!await _context.Movies.AnyAsync(m => m.ImdbID == id))
                 {
                     var peli = await BuscarEnOmdbPorIdAsync(id);
                     if (peli != null)

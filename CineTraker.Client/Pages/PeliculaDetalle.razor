@@ -24,10 +24,23 @@
 
                 @* esto es lo de streaming, no funciona todavia*@
                     <div class="mt-4 p-3 rounded" style="background-color: #1a1a1a; border: 1px solid #333;">
-                        <h6 class="text-muted mb-3 small fw-bold text-uppercase">Disponible en:</h6>
-                        <div class="d-flex gap-2">
-                            <div class="badge border border-secondary p-2 text-muted">Netflix</div>
-                            <div class="badge border border-secondary p-2 text-muted">HBO Max</div>
+                        <p class="text-uppercase fw-bold mb-2" style="color: #888; font-size: 0.85rem; letter-spacing: 1px;">
+                            Disponible en:
+                        </p>
+                        <div class="d-flex flex-wrap gap-2">
+                            @if (pelicula.Sources != null && pelicula.Sources.Any())
+                            {
+                                @foreach (var source in pelicula.Sources)
+                                {
+                                    <a href="@source.WebUrl" target="_blank" class="streaming-btn">
+                                        @source.Name
+                                    </a>
+                                }
+                            }
+                            else
+                            {
+                                <span class="text-muted small">No disponible en suscripción (AR)</span>
+                            }
                         </div>
                     </div>
                 </div>
@@ -110,7 +123,52 @@
     }
 </div>
 
+<style>
+    .streaming-box {
+        background-color: rgba(255, 255, 255, 0.05);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        border-radius: 12px;
+        padding: 1.5rem;
+        margin-top: 2rem;
+    }
 
+    .streaming-title {
+        color: #888;
+        font-size: 0.75rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 1.5px;
+        margin-bottom: 1rem;
+    }
+
+    /* Botones de las plataformas */
+    .streaming-btn {
+        display: inline-block;
+        background-color: transparent;
+        color: #00adff;
+        border: 1px solid #00adff;
+        padding: 8px 20px;
+        border-radius: 50px; /* Estilo 'píldora' */
+        text-decoration: none;
+        font-size: 0.85rem;
+        font-weight: 600;
+        transition: all 0.25s ease-in-out;
+    }
+
+        .streaming-btn:hover {
+            background-color: #00adff;
+            color: #fff;
+            transform: translateY(-3px);
+            box-shadow: 0 5px 15px rgba(0, 173, 255, 0.4);
+        }
+
+    /* Texto cuando no hay nada */
+    .no-sources {
+        font-style: italic;
+        color: #666;
+        font-size: 0.9rem;
+    }
+</style>
 
 @code {
     [Parameter] public int Id { get; set; }

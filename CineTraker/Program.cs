@@ -33,7 +33,7 @@ namespace CineTraker
                 options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
 
             builder.Services.AddHttpClient<MovieService>();
-
+            builder.Services.AddScoped<StreamingService>();
 
             builder.Services.AddCors(options =>
             {

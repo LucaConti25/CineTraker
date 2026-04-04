@@ -11,18 +11,22 @@ public class MoviesController : ControllerBase
 {
     private readonly AppDbContext _context;
     private readonly MovieService _movieService;
+    private readonly StreamingService _streamingService;
 
-    public MoviesController(AppDbContext context, MovieService movieService)
+    public MoviesController(AppDbContext context, MovieService movieService, StreamingService streamingService)
     {
         _context = context;
         _movieService = movieService;
+        _streamingService = streamingService;
     }
 
 
     [HttpGet]
     public async Task<ActionResult<IEnumerable<Movie>>> GetMovies()
     {
-        return await _context.Movies.ToListAsync();
+        return await _context.Movies
+        .OrderBy(x => Guid.NewGuid())
+        .ToListAsync();
     }
 
     [HttpGet("{id}")]
@@ -33,6 +37,11 @@ public class MoviesController : ControllerBase
         if (movie == null)
         {
             return NotFound("La película no existe en tu base de datos.");
+        }
+
+        if (!string.IsNullOrEmpty(movie.ImdbID))
+        {
+            movie.Sources = await _streamingService.GetSourcesAsync(movie.ImdbID);
         }
 
         return movie;
