@@ -46,7 +46,7 @@ namespace CineTraker
             });
 
             var app = builder.Build();
-
+            app.UseStaticFiles();
             app.UseCors();
             app.UseCors("AllowBlazor");
 

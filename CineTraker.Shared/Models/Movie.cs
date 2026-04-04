@@ -39,11 +39,6 @@ namespace CineTraker.Shared
         [NotMapped]
         public List<StreamingSource>? Sources { get; set; }
 
-        public class StreamingSource
-        {
-            public string Name { get; set; } = "";
-            public string Type { get; set; } = ""; // sub, rent, buy
-            public string WebUrl { get; set; } = "";
-        }
+        
     }
 }

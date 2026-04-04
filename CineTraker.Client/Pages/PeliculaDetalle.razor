@@ -22,18 +22,25 @@
                 <div class="col-md-4 mb-4">
                     <img src="@pelicula.PosterUrl" class="img-fluid rounded shadow-lg w-100" alt="@pelicula.Title" />
 
-                @* esto es lo de streaming, no funciona todavia*@
+                @* esto es lo de streaming*@
                     <div class="mt-4 p-3 rounded" style="background-color: #1a1a1a; border: 1px solid #333;">
                         <p class="text-uppercase fw-bold mb-2" style="color: #888; font-size: 0.85rem; letter-spacing: 1px;">
                             Disponible en:
                         </p>
-                        <div class="d-flex flex-wrap gap-2">
+                    <div class="d-flex flex-wrap gap-3 mt-2">
                             @if (pelicula.Sources != null && pelicula.Sources.Any())
                             {
                                 @foreach (var source in pelicula.Sources)
                                 {
-                                    <a href="@source.WebUrl" target="_blank" class="streaming-btn">
-                                        @source.Name
+                                    <a href="@source.WebUrl" target="_blank" title="@source.Name" class="logo-link">
+                                        @if (!string.IsNullOrEmpty(source.LogoUrl))
+                                        {
+                                            <img src="@source.LogoUrl" alt="@source.Name" class="platform-logo" />
+                                        }
+                                        else
+                                        {
+                                            <span class="streaming-btn">@source.Name</span>
+                                        }
                                     </a>
                                 }
                             }
@@ -141,18 +148,12 @@
         margin-bottom: 1rem;
     }
 
-    /* Botones de las plataformas */
     .streaming-btn {
-        display: inline-block;
-        background-color: transparent;
-        color: #00adff;
-        border: 1px solid #00adff;
-        padding: 8px 20px;
-        border-radius: 50px; /* Estilo 'píldora' */
-        text-decoration: none;
-        font-size: 0.85rem;
-        font-weight: 600;
-        transition: all 0.25s ease-in-out;
+        color: #f3ce13;
+        font-size: 0.6rem;
+        font-weight: bold;
+        text-align: center;
+        text-transform: uppercase;
     }
 
         .streaming-btn:hover {
@@ -168,6 +169,41 @@
         color: #666;
         font-size: 0.9rem;
     }
+
+    .platform-logo {
+        width: 100%;
+        height: 100%;
+        object-fit: cover; /* se rellena circulo */
+        object-position: center;
+    }
+
+        .platform-logo:hover {
+            background: rgba(255, 255, 255, 0.15);
+            border-color: #f3ce13; 
+            transform: scale(1.05);
+        }
+
+    .logo-link {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 55px; 
+        height: 55px;
+        background: transparent; 
+        border: 2px solid rgba(255, 255, 255, 0.2); 
+        border-radius: 50%;
+        transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        padding: 0; 
+        text-decoration: none;
+        overflow: hidden; /* Mantiene el recorte circular */
+        box-shadow: 0 4px 10px rgba(0, 0, 0, 0.4);
+    }
+
+        .logo-link:hover {
+            transform: scale(1.1) translateY(-3px);
+            border-color: #f3ce13; 
+            box-shadow: 0 0 15px rgba(243, 206, 19, 0.5); 
+        }
 </style>
 
 @code {

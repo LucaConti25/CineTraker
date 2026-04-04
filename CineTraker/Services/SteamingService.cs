@@ -1,5 +1,5 @@
-﻿using System.Net.Http.Json;
-using static CineTraker.Shared.Movie;
+﻿using CineTraker.Shared;
+using System.Net.Http.Json;
 
 namespace CineTraker.Services
 {
@@ -30,7 +30,8 @@ namespace CineTraker.Services
                 {
                     Name = s.Name,
                     Type = s.Type, 
-                    WebUrl = s.WebUrl
+                    WebUrl = s.WebUrl,
+                    LogoUrl = GetLogoUrl(s.Name)
                 }).DistinctBy(x => x.Name).ToList() ?? new();
             }
             catch (Exception ex)
@@ -39,6 +40,26 @@ namespace CineTraker.Services
                 return new List<StreamingSource>();
             }
         }
+
+        private string GetLogoUrl(string providerName)
+        {
+            var name = providerName.ToLower();
+
+            return name switch
+            {
+                var n when n.Contains("netflix") => "/images/logos/netflix.png",
+                var n when n.Contains("max") || n.Contains("hbo") => "/images/logos/hbo.jpg",
+                var n when n.Contains("disney") => "/images/logos/disney+.png",
+                var n when n.Contains("amazon") || n.Contains("prime") => "/images/logos/prime.jpg",
+                var n when n.Contains("paramount") => "/images/logos/paramount.jpg",
+                var n when n.Contains("apple") => "/images/logos/apple-tv.png",
+                var n when n.Contains("mubi") => "/images/logos/mubi.png",
+                var n when n.Contains("claro") => "/images/logos/claro.jpg",
+                _ => "" // Fallback vacío
+            };
+        }
+
+
     }
 
     public class WatchmodeDetails
@@ -52,4 +73,6 @@ namespace CineTraker.Services
         public string Type { get; set; } = "";
         public string WebUrl { get; set; } = "";
     }
+
+    
 }
