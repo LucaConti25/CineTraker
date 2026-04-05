@@ -135,18 +135,43 @@ public class MoviesController : ControllerBase
     [HttpGet("admin/seed")]
     public async Task<IActionResult> SeedData()
     {
-        var ids = new List<string> { 
-            "tt0111161", "tt0068646", "tt0468569", "tt0071562", "tt0050083", "tt0108052", "tt0167260", "tt0110912", "tt0060196", "tt0137523",
-            "tt0120737", "tt0109830", "tt0080684", "tt1375666", "tt0167261", "tt0110357", "tt0075148", "tt0076759", "tt0034583", "tt0054215",
-            "tt0114369", "tt0114814", "tt0102926", "tt0040522", "tt0118799", "tt0120815", "tt0050825", "tt0062622", "tt0021749", "tt0058331",
-            "tt0099685", "tt0031381", "tt0081398", "tt0033467", "tt0107048", "tt0086190", "tt0105771", "tt0209144", "tt0047396", "tt0053125",
-            "tt0050212", "tt0056119", "tt0032138", "tt0032603", "tt0055031", "tt0052357", "tt0035423", "tt0046912", "tt0057115", "tt0052026" 
+        var ids = new List<string> {
+            "tt0133093", "tt0047478", "tt0317248", "tt0245429", "tt6751668", "tt2582802", "tt1675434", "tt0482571",
+            "tt0407887", "tt0172495", "tt0253474", "tt0816692", "tt1853728", "tt1345836", "tt2380307", "tt1187043",
+            "tt8503618", "tt0986264", "tt0405094", "tt7286456", "tt0910970", "tt0169547", "tt0364569", "tt0211915",
+            "tt0022100", "tt0104346", "tt5074352", "tt0078788", "tt0078748", "tt0374887", "tt0097576", "tt0087843",
+            "tt0208092", "tt0361748", "tt0071853", "tt1832382", "tt0086879", "tt0059578", "tt0096283", "tt0477348",
+            "tt2106476", "tt1255953", "tt0119488", "tt0017136", "tt0042876", "tt0032976", "tt0758758", "tt0080678",
+            "tt0457430", "tt0434409", "tt0053291", "tt0050986", "tt1205489", "tt0046268", "tt0120735", "tt0117951",
+            "tt0015864", "tt0264464", "tt0120382", "tt0395169", "tt0167404", "tt0084787", "tt1305806", "tt2278388",
+            "tt1895587", "tt1663202", "tt0074958", "tt0019254", "tt0113247", "tt0454876", "tt0087544", "tt0118845",
+            "tt2338151", "tt1201607", "tt1028532", "tt0401383", "tt1392214", "tt4857264", "tt0087884", "tt1280558",
+            "tt3783958", "tt0046911", "tt3501632", "tt0367110", "tt0060107", "tt0058946", "tt8613070", "tt0083922"
+
         };
         var resultado = await _movieService.EjecutarCargaMasiva(ids);
         return Ok($"Proceso terminado. Se cargaron {resultado} películas nuevas.");
     }
 
+    [HttpGet("seed-single/{id}")]
+    public async Task<IActionResult> SeedSingle(string id)
+    {
+        try
+        {
+            // Reutilizamos tu lógica de carga masiva pero para un solo ID
+            var ids = new List<string> { id };
+            var resultado = await _movieService.EjecutarCargaMasiva(ids);
 
+            if (resultado > 0)
+                return Ok(new { success = true, message = $"Cargada correctamente" });
+
+            return Ok(new { success = false, message = "Ya existía en la base" });
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, ex.Message);
+        }
+    }
 
 
     [HttpGet("smart-search/{title}")]

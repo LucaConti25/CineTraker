@@ -1,5 +1,6 @@
 ﻿@page "/"
 @using CineTraker.Shared
+@using CineTraker.Shared.Models
 @inject HttpClient Http
 
 <PageTitle>CineTraker - Inicio</PageTitle>
@@ -28,6 +29,44 @@
                 }
             </button>
         }
+    </div>
+
+    <div class="d-flex flex-wrap gap-3 mb-5">
+
+        @* Dropdown de Década *@
+        <div class="dropdown mb-4">
+            <button class="pill-dropdown @(filtrosDecadas.Any(f => f.Seleccionado) ? "active" : "")" 
+                    type="button" @onclick="ToggleDropdown" @onfocusout="CerrarDropdown">
+
+                        @{
+                            var seleccionada = filtrosDecadas.FirstOrDefault(f => f.Seleccionado);
+                            if (seleccionada != null)
+                            {
+                                <span class="fw-bold">@seleccionada.Etiqueta</span>
+                            }
+                            else
+                            {
+                                <span>DÉCADA</span>
+                                <span class="ms-2 text-muted">---</span>
+                            }
+                        }
+                <i class="bi bi-chevron-down ms-2 small"></i>
+            </button>
+
+            <ul class="dropdown-menu dropdown-menu-dark custom-dropdown-menu @(mostrarDropdown ? "show" : "")">
+                        @foreach (var decada in filtrosDecadas)
+                        {
+                        <li>
+                            <button class="dropdown-item @(decada.Seleccionado ? "active-item" : "")" 
+                                    @onmousedown="() => SeleccionarDecada(decada)">
+                                    @decada.Etiqueta
+                            </button>
+                        </li>
+                        }
+            </ul>
+        </div>
+
+        @* Acá irían las otras píldoras (GÉNERO, DIRECTOR, etc.) siguiendo la misma estructura *@
     </div>
 
     <h2 class="fw-bold mb-4 text-light">Cartelera</h2>
@@ -95,6 +134,67 @@
         width: 100%;
     }
 
+    .filters-scroll-container {
+        overflow-x: auto;
+        padding-bottom: 10px;
+        scrollbar-width: none; /* Oculta scroll en Firefox */
+    }
+    .filters-scroll-container::-webkit-scrollbar { display: none; } /* Oculta scroll en Chrome */
+
+    .pill-dropdown {
+        background: #2a2a2a;
+        border: 1px solid #444;
+        color: white;
+        padding: 8px 20px;
+        border-radius: 50px;
+        font-size: 0.8rem;
+        font-weight: 500;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        transition: all 0.2s ease;
+    }
+
+    .pill-dropdown:hover {
+        background: #333;
+        border-color: #666;
+    }
+
+    .pill-dropdown.active {
+        background: #ffc107; /* Amarillo de tu captura */
+        color: black;
+        border-color: #ffc107;
+    }
+
+    /* Menú Desplegable con Glassmorphism */
+    .custom-dropdown-menu {
+        min-width: 200px !important; /* Ajustado para el rango de años */
+        background: rgba(25, 25, 25, 0.9) !important;
+        backdrop-filter: blur(12px);
+        border: 1px solid rgba(255, 255, 255, 0.1) !important;
+        border-radius: 12px !important;
+    }
+
+    .custom-dropdown-menu.show {
+        display: block; /* Esto es lo que hace que aparezca al hacer clic */
+        position: absolute;
+        background: rgba(30, 30, 30, 0.9);
+        backdrop-filter: blur(10px);
+        border: 1px solid #444;
+        z-index: 1000;
+    }
+
+    .dropdown-item {
+        border-radius: 6px;
+        padding: 8px 15px;
+        font-size: 0.9rem;
+    }
+
+    .active-item {
+        background-color: #ffc107 !important;
+        color: black !important;
+        font-weight: bold;
+    }
+
 </style>
 
 
@@ -103,15 +203,74 @@
     private List<Movie>? peliculas; 
     private string textoBusqueda = "";
     private bool buscandoEnApi = false;
+    private List<FiltroDecada> filtrosDecadas = new();
+    private bool mostrarDropdown = false; 
+    private void ToggleDropdown() => mostrarDropdown = !mostrarDropdown;
 
-    // PROPIEDAD CALCULADA: Filtra 'peliculas' automáticamente cada vez que escribís.
-    private List<Movie> PeliculasFiltradas => string.IsNullOrWhiteSpace(textoBusqueda)
-        ? peliculas ?? new()
-        : peliculas?.Where(p => p.Title.Contains(textoBusqueda, StringComparison.OrdinalIgnoreCase)).ToList() ?? new();
+    // Filtra automáticamente cada vez que se escribe
+    // private List<Movie> PeliculasFiltradas => string.IsNullOrWhiteSpace(textoBusqueda)
+        //? peliculas ?? new()
+        //: peliculas?.Where(p => p.Title.Contains(textoBusqueda, StringComparison.OrdinalIgnoreCase)).ToList() ?? new();
+
+    private List<Movie> PeliculasFiltradas
+    {
+        get
+        {
+            var query = peliculas ?? new();
+
+            // Filtro de Texto
+            if (!string.IsNullOrWhiteSpace(textoBusqueda))
+                query = query.Where(p => p.Title.Contains(textoBusqueda, StringComparison.OrdinalIgnoreCase)).ToList();
+
+            // Filtro de Década (combinado)
+            var seleccionado = filtrosDecadas.FirstOrDefault(f => f.Seleccionado);
+            if (seleccionado != null)
+                query = query.Where(p => p.Year >= seleccionado.AnioInicio && p.Year <= seleccionado.AnioInicio + 9).ToList();
+
+            return query;
+        }
+    }
+
+    private async Task CerrarDropdown()
+    {
+        // El delay es para que el sistema llegue a registrar el clic en la década
+        // antes de que el menú desaparezca de la pantalla.
+        await Task.Delay(200);
+        mostrarDropdown = false;
+        StateHasChanged();
+    }
 
     protected override async Task OnInitializedAsync()
     {
+        for (int anio = 1930; anio <= 2020; anio += 10)
+        {
+            filtrosDecadas.Add(new FiltroDecada(anio));
+        }
         await CargarCatalogo();
+    }
+
+    private void SeleccionarDecada(FiltroDecada filtro)
+    {
+        if (filtro.Seleccionado)
+        {
+            filtro.Seleccionado = false;
+        }
+        else
+        {
+            // Apagamos todas las demás para que solo una esté activa
+            filtrosDecadas.ForEach(f => f.Seleccionado = false);
+            filtro.Seleccionado = true;
+        }
+
+        mostrarDropdown = false;
+        StateHasChanged();
+    }
+
+    private void LimpiarTodosLosFiltros()
+    {
+        filtrosDecadas.ForEach(f => f.Seleccionado = false);
+        textoBusqueda = "";
+        StateHasChanged();
     }
 
     private async Task CargarCatalogo()

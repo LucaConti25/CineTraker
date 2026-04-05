@@ -1,0 +1,92 @@
+﻿@page "/admin/seed"
+@inject HttpClient Http
+
+<PageTitle>Admin - Carga Masiva</PageTitle>
+
+<div class="container mt-5">
+    <h3>Consola de Carga IMDb</h3>
+
+    <div class="card bg-dark text-white p-4 mb-4">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <span>Progreso: @progreso / @totalPeliculas</span>
+            <button class="btn btn-warning" @onclick="IniciarCarga" disabled="@estaCargando">
+                @(estaCargando ? "Cargando..." : "Iniciar Sincronización")
+            </button>
+        </div>
+
+        <div class="progress" style="height: 30px;">
+            <div class="progress-bar progress-bar-striped progress-bar-animated bg-warning" 
+                 role="progressbar" 
+                 style="width: @(Porcentaje)%;">
+                @Porcentaje%
+            </div>
+        </div>
+    </div>
+
+    <div class="bg-black text-success p-3" style="height: 300px; overflow-y: auto; font-family: monospace; border-radius: 8px;">
+        @foreach (var linea in log)
+        {
+                <div>> @linea</div>
+        }
+    </div>
+</div>
+
+@code {
+    private bool estaCargando = false;
+    private int progreso = 0;
+    private int totalPeliculas => idsAProcesar.Count;
+    private List<string> log = new();
+    private double Porcentaje => totalPeliculas == 0 ? 0 : Math.Round((double)progreso / totalPeliculas * 100);
+
+    // Aquí pegás la lista de los 200 IDs que te pasé antes
+    private List<string> idsAProcesar = new() {
+            "tt0133093", "tt0047478", "tt0317248", "tt0245429", "tt6751668", "tt2582802", "tt1675434", "tt0482571",
+            "tt0407887", "tt0172495", "tt0253474", "tt0816692", "tt1853728", "tt1345836", "tt2380307", "tt1187043",
+            "tt8503618", "tt0986264", "tt0405094", "tt7286456", "tt0910970", "tt0169547", "tt0364569", "tt0211915",
+            "tt0022100", "tt0104346", "tt5074352", "tt0078788", "tt0078748", "tt0374887", "tt0097576", "tt0087843",
+            "tt0208092", "tt0361748", "tt0071853", "tt1832382", "tt0086879", "tt0059578", "tt0096283", "tt0477348",
+            "tt2106476", "tt1255953", "tt0119488", "tt0017136", "tt0042876", "tt0032976", "tt0758758", "tt0080678",
+            "tt0457430", "tt0434409", "tt0053291", "tt0050986", "tt1205489", "tt0046268", "tt0120735", "tt0117951",
+            "tt0015864", "tt0264464", "tt0120382", "tt0395169", "tt0167404", "tt0084787", "tt1305806", "tt2278388",
+            "tt1895587", "tt1663202", "tt0074958", "tt0019254", "tt0113247", "tt0454876", "tt0087544", "tt0118845",
+            "tt2338151", "tt1201607", "tt1028532", "tt0401383", "tt1392214", "tt4857264", "tt0087884", "tt1280558",
+            "tt3783958", "tt0046911", "tt3501632", "tt0367110", "tt0060107", "tt0058946", "tt8613070", "tt0083922"
+        };
+
+    private async Task IniciarCarga()
+    {
+        estaCargando = true;
+        progreso = 0;
+        log.Clear();
+
+        foreach (var id in idsAProcesar)
+        {
+            log.Insert(0, $"Procesando {id}..."); // Insertar arriba para ver lo último
+            StateHasChanged();
+
+            try
+            {
+                var response = await Http.GetAsync($"/api/Movies/seed-single/{id}");
+                if (response.IsSuccessStatusCode)
+                {
+                    log.Insert(0, $"Completado: {id} OK");
+                    progreso++;
+                }
+                else
+                {
+                    log.Insert(0, $"Error en {id}: {response.ReasonPhrase}");
+                }
+            }
+            catch (Exception ex)
+            {
+                log.Insert(0, $"Fallo crítico en {id}: {ex.Message}");
+            }
+
+            StateHasChanged(); // Forzar a Blazor a repintar la barrita
+            await Task.Delay(500); // Un pequeño respiro para la UI y la API
+        }
+
+        estaCargando = false;
+        log.Insert(0, "--- PROCESO FINALIZADO ---");
+    }
+}
