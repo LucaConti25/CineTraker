@@ -102,6 +102,60 @@
     }
 </div>
 
+@if (mostrarModalExterno)
+{
+        <div class="custom-modal-overlay">
+            <div class="custom-modal-content">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h5 class="text-warning m-0">¿Cuál de estas buscabas?</h5>
+                    <button class="btn-close btn-close-white" @onclick="() => mostrarModalExterno = false"></button>
+                </div>
+
+                <div class="modal-results-body">
+                @if (buscandoEnApi)
+                {
+                            <div class="text-center py-4">
+                                <div class="spinner-border text-warning"></div>
+                                <p class="text-muted mt-2">Consultando a internet...</p>
+                            </div>
+                }
+                else
+                {
+                            <div class="row row-cols-2 row-cols-md-3 g-3">
+                        @foreach (var res in resultadosExternos)
+                        {
+                                        <div class="col">
+                                            <div class="card h-100 bg-dark border-secondary option-card" @onclick="() => ConfirmarYGuardar(res)">
+                                                <img src="@res.SafePosterUrl" class="card-img-top">
+                                                <div class="card-body p-2">
+                                                    <p class="small fw-bold mb-0 text-truncate">@res.Title</p>
+                                                    <span class="text-muted small">@res.Year</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                        }
+                            </div>
+                }
+                </div>
+            </div>
+        </div>
+}
+
+
+
+@if (mostrarFeedback)
+{
+        <div class="feedback-toast shadow-lg border-0 animacion-entrada">
+            <div class="d-flex align-items-center p-3 text-white bg-success rounded">
+                <i class="bi bi-check-circle-fill me-2 fs-4"></i>
+                <div>
+                    <strong class="d-block">¡Agregada con éxito!</strong>
+                    <span class="small">"@peliculaAgregada" ya está en tu catálogo.</span>
+                </div>
+            </div>
+        </div>
+}
+
 
 
 
@@ -195,6 +249,53 @@
         font-weight: bold;
     }
 
+    .custom-modal-overlay {
+        position: fixed;
+        top: 0; left: 0; width: 100%; height: 100%;
+        background: rgba(0,0,0,0.85);
+        backdrop-filter: blur(10px); /* Desenfoque de fondo */
+        z-index: 9999;
+        display: flex; align-items: center; justify-content: center;
+    }
+
+    .custom-modal-content {
+        background: #1a1a1a;
+        border: 1px solid #444;
+        border-radius: 16px;
+        width: 90%; max-width: 600px;
+        padding: 25px;
+        max-height: 80vh;
+        overflow-y: auto;
+    }
+
+    .option-card {
+        cursor: pointer;
+        transition: transform 0.2s, border-color 0.2s;
+    }
+
+    .option-card:hover {
+        transform: scale(1.05);
+        border-color: #ffc107 !important;
+    }
+
+    .feedback-toast {
+        position: fixed;
+        bottom: 30px;
+        right: 30px;
+        z-index: 10000;
+        min-width: 250px;
+    }
+
+    .animacion-entrada {
+        animation: slideInRight 0.5s ease-out;
+    }
+
+    @@keyframes slideInRight {
+        from { transform: translateX(100%); opacity: 0; }
+        to { transform: translateX(0); opacity: 1; }
+    }
+
+
 </style>
 
 
@@ -206,11 +307,11 @@
     private List<FiltroDecada> filtrosDecadas = new();
     private bool mostrarDropdown = false; 
     private void ToggleDropdown() => mostrarDropdown = !mostrarDropdown;
+    private List<Movie> resultadosExternos = new(); // Para guardar lo que traiga la API
+    private bool mostrarModalExterno = false;       // Para controlar si el modal se ve o no
+    private bool mostrarFeedback = false;
+    private string peliculaAgregada = "";
 
-    // Filtra automáticamente cada vez que se escribe
-    // private List<Movie> PeliculasFiltradas => string.IsNullOrWhiteSpace(textoBusqueda)
-        //? peliculas ?? new()
-        //: peliculas?.Where(p => p.Title.Contains(textoBusqueda, StringComparison.OrdinalIgnoreCase)).ToList() ?? new();
 
     private List<Movie> PeliculasFiltradas
     {
@@ -231,6 +332,9 @@
         }
     }
 
+
+
+
     private async Task CerrarDropdown()
     {
         // El delay es para que el sistema llegue a registrar el clic en la década
@@ -240,6 +344,9 @@
         StateHasChanged();
     }
 
+
+
+
     protected override async Task OnInitializedAsync()
     {
         for (int anio = 1930; anio <= 2020; anio += 10)
@@ -248,6 +355,9 @@
         }
         await CargarCatalogo();
     }
+
+
+
 
     private void SeleccionarDecada(FiltroDecada filtro)
     {
@@ -266,12 +376,20 @@
         StateHasChanged();
     }
 
+
+
+
+
     private void LimpiarTodosLosFiltros()
     {
         filtrosDecadas.ForEach(f => f.Seleccionado = false);
         textoBusqueda = "";
         StateHasChanged();
     }
+
+
+
+
 
     private async Task CargarCatalogo()
     {
@@ -285,28 +403,67 @@
         }
     }
 
+
+
+
+
     private async Task EjecutarBusquedaInteligente()
     {
         if (string.IsNullOrWhiteSpace(textoBusqueda)) return;
 
         buscandoEnApi = true;
+        mostrarModalExterno = true; // Abrimos el modal con el spinner mientras la API responde.
+
         try
         {
-            // Llamamos al endpoint "SmartSearch" del Controller
-            var resultado = await Http.GetFromJsonAsync<List<Movie>>($"api/Movies/smart-search/{textoBusqueda}");
+            // Pedimos la lista de candidatos para que el usuario elija la correcta.
+            var resultados = await Http.GetFromJsonAsync<List<Movie>>($"api/Movies/smart-search/{textoBusqueda}");
 
-            if (resultado != null && resultado.Any())
+            if (resultados != null)
             {
-                await CargarCatalogo();
+                resultadosExternos = resultados;
             }
         }
         catch (Exception ex)
         {
             Console.WriteLine($"Error en SmartSearch: {ex.Message}");
+            mostrarModalExterno = false; // Si falla, cerramos el modal
         }
         finally
         {
             buscandoEnApi = false;
+            StateHasChanged(); // Forzamos el refresco para que se vea el modal con la data
+        }
+    }
+
+
+
+
+
+    private async Task ConfirmarYGuardar(Movie peli)
+    {
+        // El usuario ya eligió, ahora sí impactamos la base de datos local.
+        var response = await Http.PostAsJsonAsync("api/Movies", peli);
+
+        if (response.IsSuccessStatusCode)
+        {
+            
+            peliculaAgregada = peli.Title;
+            mostrarModalExterno = false; 
+            mostrarFeedback = true;      
+
+            StateHasChanged(); // Forzamos el renderizado para que aparezca el toast
+
+            await Task.Delay(2500);
+
+           
+            mostrarFeedback = false;
+            textoBusqueda = "";
+            await CargarCatalogo(); 
+        }
+        else
+        {
+            Console.WriteLine("Error al guardar la película.");
         }
     }
 

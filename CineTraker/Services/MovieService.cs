@@ -1,5 +1,6 @@
 ﻿using CineTraker.Data;
 using CineTraker.Shared;
+using CineTraker.Shared.Models;
 using Microsoft.EntityFrameworkCore;
 using System.Text.Json;
 
@@ -17,6 +18,11 @@ namespace CineTraker.Services
             _context = context;
         }
 
+        
+        
+        
+        
+        
         public async Task<OmdbResponse?> GetMovieFromApiAsync(string title)
         {
             
@@ -29,6 +35,11 @@ namespace CineTraker.Services
             }
             return null;
         }
+
+
+
+
+
 
         public async Task<Movie?> BuscarEnOmdbPorIdAsync(string imdbId)
         {
@@ -50,6 +61,14 @@ namespace CineTraker.Services
             }
             return null;
         }
+
+
+
+
+
+
+
+
 
         public async Task<int> EjecutarCargaMasiva(List<string> ids)
         {
@@ -86,5 +105,34 @@ namespace CineTraker.Services
             }
             return contador;
         }
+
+
+
+
+
+        public async Task<List<Movie>> SearchMoviesFromApiAsync(string title)
+        {
+            // Usamos el parámetro 's=' (Search) de OMDb. 
+            // A diferencia de 't=', este nos devuelve un array con todas las coincidencias.
+            var response = await _httpClient.GetFromJsonAsync<OmdbSearchResponse>(
+                $"https://www.omdbapi.com/?s={title}&apikey={_apiKey}");
+
+            if (response == null || response.Response == "False" || response.Search == null)
+            {
+                return new List<Movie>();
+            }
+
+            // Convertimos la respuesta cruda de OMDb a nuestro modelo de dominio 'Movie'.
+            return response.Search.Select(m => new Movie
+            {
+                Title = m.Title,
+                // OMDb a veces manda años como "2018–2022", limpiamos para quedarnos con el int
+                Year = int.TryParse(m.Year.Substring(0, 4), out int year) ? year : 0,
+                PosterUrl = m.Poster,
+                ImdbID = m.imdbID
+            }).ToList();
+        }
+
+
     }
 }

@@ -49,6 +49,27 @@ public class MoviesController : ControllerBase
 
 
 
+    [HttpPost]
+    public async Task<ActionResult<Movie>> PostMovie(Movie movie)
+    {
+        // Este es el guardado real. Se dispara cuando el usuario confirma su elección en el modal.
+        // Chequeamos el ImdbID para que no nos metan dos veces la misma peli.
+        var existe = await _context.Movies.AnyAsync(m => m.ImdbID == movie.ImdbID);
+
+        if (existe)
+        {
+            return BadRequest("La película ya está en tu catálogo.");
+        }
+
+        _context.Movies.Add(movie);
+        await _context.SaveChangesAsync();
+
+        return CreatedAtAction(nameof(GetMovie), new { id = movie.Id }, movie);
+    }
+
+
+
+
     [HttpPost("search/{title}")]
     public async Task<IActionResult> SearchAndSave(string title)
     {
@@ -177,46 +198,17 @@ public class MoviesController : ControllerBase
     [HttpGet("smart-search/{title}")]
     public async Task<ActionResult<IEnumerable<Movie>>> SmartSearch(string title)
     {
-        
-        var localMovies = await _context.Movies
-            .Where(m => m.Title.Contains(title))
-            .ToListAsync();
+        // Solo consultamos a la API externa para traer opciones al usuario.
+        // No guardamos nada todavía para evitar llenar la DB con basura o versiones erróneas.
+        var resultadosDesdeApi = await _movieService.SearchMoviesFromApiAsync(title);
 
-        
-        if (localMovies.Any())
+        if (resultadosDesdeApi == null || !resultadosDesdeApi.Any())
         {
-            return Ok(localMovies);
+            return Ok(new List<Movie>());
         }
 
-        
-        var omdbMovie = await _movieService.GetMovieFromApiAsync(title);
-
-        if (omdbMovie != null && omdbMovie.Response == "True")
-        {
-            // 4. Verificamos si por ID de IMDb ya existe (doble check de seguridad)
-            var existePorId = await _context.Movies.AnyAsync(m => m.ImdbID == omdbMovie.imdbID);
-
-            if (!existePorId)
-            {
-                
-                var newMovie = new Movie
-                {
-                    Title = omdbMovie.Title,
-                    Year = int.Parse(omdbMovie.Year.Substring(0, 4)),
-                    Director = omdbMovie.Director,
-                    Plot = omdbMovie.Plot,
-                    PosterUrl = omdbMovie.Poster,
-                    ImdbID = omdbMovie.imdbID
-                };
-
-                _context.Movies.Add(newMovie);
-                await _context.SaveChangesAsync();
-
-                return Ok(new List<Movie> { newMovie });
-            }
-        }
-
-        return Ok(new List<Movie>());
+        // 2. Devolvemos la lista al Modal de Blazor para que el usuario elija
+        return Ok(resultadosDesdeApi);
     }
 
 }
