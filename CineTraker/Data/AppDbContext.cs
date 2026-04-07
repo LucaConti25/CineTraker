@@ -9,7 +9,7 @@ namespace CineTraker.Data
 
         public DbSet<Movie> Movies { get; set; }
         public DbSet<Review> Reviews { get; set; }
-
+        public DbSet<StreamingSource> StreamingSources { get; set; }
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             base.OnModelCreating(modelBuilder);
@@ -18,7 +18,11 @@ namespace CineTraker.Data
                 .HasOne<Movie>()
                 .WithMany()
                 .HasForeignKey(r => r.MovieId)
-                .OnDelete(DeleteBehavior.Cascade); 
+                .OnDelete(DeleteBehavior.Cascade);
+
+            modelBuilder.Entity<StreamingSource>()
+            .HasIndex(s => s.Name)
+            .IsUnique();
         }
     }
 }

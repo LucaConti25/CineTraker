@@ -7,7 +7,7 @@
 
 <div class="container-fluid py-4 px-5">
 
-    @* --- SECCIÓN DE BÚSQUEDA LOCAL --- *@
+    @* --- BÚSQUEDA LOCAL E INTELIGENTE --- *@
     <div class="search-box mb-5 p-4 rounded shadow" style="background-color: #1e1e1e; border: 1px solid #333;">
         <h4 class="text-light mb-3">🔍 Buscar en mi catálogo</h4>
         <div class="input-group">
@@ -30,11 +30,12 @@
             </button>
         }
     </div>
-
-    <div class="d-flex flex-wrap gap-3 mb-5">
+    
+    @*BARRA DE FILTROS (DROPDOWNS HORIZONTALES) *@
+    <div class="d-flex flex-row align-items-center gap-3 mb-5">
 
         @* Dropdown de Década *@
-        <div class="dropdown mb-4">
+        <div class="dropdown">
             <button class="pill-dropdown @(filtrosDecadas.Any(f => f.Seleccionado) ? "active" : "")" 
                     type="button" @onclick="ToggleDropdown" @onfocusout="CerrarDropdown">
 
@@ -66,9 +67,105 @@
             </ul>
         </div>
 
+        @* --- Dropdown de GÉNERO --- *@
+        <div class="dropdown">
+            <button class="pill-dropdown @(!string.IsNullOrEmpty(generoSeleccionado) ? "active" : "")"
+                    type="button" @onclick="ToggleGenero" @onfocusout="CerrarGenero">
+                @if (!string.IsNullOrEmpty(generoSeleccionado))
+                {
+                    <span class="fw-bold">@generoSeleccionado.ToUpper()</span>
+                }
+                else
+                {
+
+                    <span>GÉNERO</span>
+                    <span class="ms-2 text-muted">---</span>
+                }
+                <i class="bi bi-chevron-down ms-2 small"></i>
+            </button>
+            <ul class="dropdown-menu dropdown-menu-dark custom-dropdown-menu @(mostrarGenero ? "show" : "")">
+                <li><button class="dropdown-item" @onmousedown='() => SeleccionarGenero(null)'>TODOS</button></li>
+                @foreach (var g in generos)
+                {
+                    <li><button class="dropdown-item @(generoSeleccionado == g ? "active-item" : "")" @onmousedown="() => SeleccionarGenero(g)">@g.ToUpper()</button></li>
+                }
+            </ul>
+        </div>
+
+        @* --- Dropdown de PUNTUACIÓN --- *@
+        <div class="dropdown">
+            <button class="pill-dropdown @(ratingSeleccionado.HasValue ? "active" : "")"
+                    type="button" @onclick="ToggleRating" @onfocusout="CerrarRating">
+                @if (ratingSeleccionado.HasValue)
+                {
+                    <span class="fw-bold">⭐ +@ratingSeleccionado.Value.ToString("0.0")</span>
+                }
+                else
+                {
+
+                    <span>PUNTUACIÓN IMDB</span>
+                    <span class="ms-2 text-muted">---</span>
+                }
+                <i class="bi bi-chevron-down ms-2 small"></i>
+            </button>
+            <ul class="dropdown-menu dropdown-menu-dark custom-dropdown-menu @(mostrarRating ? "show" : "")">
+                <li><button class="dropdown-item" @onmousedown='() => SeleccionarRating(null)'>CUALQUIERA</button></li>
+                <li><button class="dropdown-item" @onmousedown="() => SeleccionarRating(6.0)">⭐ +6.0</button></li>
+                <li><button class="dropdown-item" @onmousedown="() => SeleccionarRating(7.0)">⭐ +7.0</button></li>
+                <li><button class="dropdown-item" @onmousedown="() => SeleccionarRating(8.0)">🌟 +8.0</button></li>
+                <li><button class="dropdown-item" @onmousedown="() => SeleccionarRating(9.0)">🔥 TOP (+9.0)</button></li>
+            </ul>
+        </div>
+
+        @* --- Filtro de PLATAFORMA --- *@
+        <div class="dropdown">
+            <button class="pill-dropdown @(!string.IsNullOrEmpty(plataformaSeleccionada) ? "active" : "")"
+                    type="button" @onclick="TogglePlataforma" @onfocusout="CerrarPlataforma">
+
+                @if (!string.IsNullOrEmpty(plataformaSeleccionada))
+                {
+                    <span class="fw-bold">@plataformaSeleccionada.ToUpper()</span>
+                }
+                else
+                {
+                    <span>PLATAFORMA</span>
+                    <span class="ms-2 text-muted">---</span>
+                }
+                <i class="bi bi-chevron-down ms-2 small"></i>
+            </button>
+
+            <ul class="dropdown-menu dropdown-menu-dark custom-dropdown-menu @(mostrarPlataforma ? "show" : "")"
+                style="min-width: 250px; padding: 20px;">
+
+                <h6 class="dropdown-header text-uppercase small pb-3">Disponibles en:</h6>
+
+                <div class="platform-grid">
+                    @foreach (var plat in plataformasFrecuentes)
+                    {
+                        <button class="platform-icon-btn @(plataformaSeleccionada == plat ? "selected" : "")"
+                                title="@plat"
+                                @onmousedown="() => SeleccionarPlataforma(plat)">
+                            @* Acá podés usar una URL local o externa. 
+                       Si tenés los logos en wwwroot/images/logos, usá esa ruta.
+                    *@
+                            <img src="/images/logos/@(plat.ToLower().Replace(" ", "-")).png"
+                                 onerror="this.src='https://img.icons8.com/color/48/video-playlist.png'" />
+                        </button>
+                    }
+
+                    @* Botón para limpiar filtro *@
+                    <button class="platform-icon-btn btn-clear" @onmousedown="() => SeleccionarPlataforma(null)">
+                        <i class="bi bi-x-lg"></i>
+                    </button>
+                </div>
+            </ul>
+        </div>
         @* Acá irían las otras píldoras (GÉNERO, DIRECTOR, etc.) siguiendo la misma estructura *@
     </div>
 
+
+
+    @* CARTELERA DE PELÍCULAS *@
     <h2 class="fw-bold mb-4 text-light">Cartelera</h2>
 
     @if (peliculas == null)
@@ -88,7 +185,13 @@
                     <NavLink href="@($"/pelicula/{peli.Id}")" style="text-decoration: none;">
                         <div class="card h-100 border-0 bg-transparent movie-card">
                             <div class="poster-container shadow">
-                                        <img src="@peli.SafePosterUrl" class="card-img-top rounded" onerror="this.src='https://placehold.co/300x450?text=Sin+Poster'" alt="@peli.Title">
+                                <img src="@peli.SafePosterUrl" class="card-img-top rounded" onerror="this.src='https://placehold.co/300x450?text=Sin+Poster'" alt="@peli.Title">
+                                @if (!string.IsNullOrEmpty(peli.ImdbRating) && peli.ImdbRating != "N/A")
+                                {
+                                    <div class="imdb-rating-badge">
+                                        ⭐ @peli.ImdbRating
+                                    </div>
+                                }
                             </div>
                             <div class="card-body px-0 pt-2 text-center">
                                 <h6 class="text-truncate mb-0 fw-bold text-light">@peli.Title</h6>
@@ -102,6 +205,9 @@
     }
 </div>
 
+
+
+@* MODALES Y NOTIFICACIONES *@
 @if (mostrarModalExterno)
 {
         <div class="custom-modal-overlay">
@@ -163,85 +269,143 @@
     body {
         background-color: #141414;
         color: white;
+        margin: 0;
+        padding: 0;
     }
 
-    .movie-card {
-        transition: transform 0.3s ease, box-shadow 0.3s ease; 
-        cursor: pointer;
-        background-color: transparent; 
+    /* --- CONTENEDOR DE FILTROS --- */
+    .filters-container {
+        display: flex !important; 
+        flex-direction: row !important;
+        align-items: center;
+        gap: 15px; /* Espacio entre botones */
+        margin-bottom: 2rem;
     }
 
-    .movie-card:hover {
-        transform: scale(1.05);
-        z-index: 10;
-        box-shadow: 0 10px 20px rgba(0,0,0,0.5); 
-    }
+        /* Evitá que los dropdowns de Bootstrap rompan la fila */
+        .filters-container .dropdown {
+            display: block !important;
+        }
 
-    .poster-container {
-        border-radius: 8px;
-        overflow: hidden; 
+    .dropdown {
+        display: inline-block !important;
+        width: auto !important;
     }
-
-    .poster-container img {
-        aspect-ratio: 2/3;
-        object-fit: cover;
-        width: 100%;
-    }
-
-    .filters-scroll-container {
-        overflow-x: auto;
-        padding-bottom: 10px;
-        scrollbar-width: none; /* Oculta scroll en Firefox */
-    }
-    .filters-scroll-container::-webkit-scrollbar { display: none; } /* Oculta scroll en Chrome */
+    
 
     .pill-dropdown {
-        background: #2a2a2a;
+        display: inline-flex !important;
+        width: auto !important;
+        white-space: nowrap !important; /* Evita que el texto interno se parta */
+        align-items: center;
+        justify-content: center;
+        background-color: #2b2b2b;
+        color: #efefef;
         border: 1px solid #444;
-        color: white;
-        padding: 8px 20px;
         border-radius: 50px;
-        font-size: 0.8rem;
-        font-weight: 500;
-        text-transform: uppercase;
-        letter-spacing: 0.5px;
+        padding: 8px 18px;
+        font-size: 0.85rem;
+        cursor: pointer;
         transition: all 0.2s ease;
     }
 
-    .pill-dropdown:hover {
-        background: #333;
-        border-color: #666;
+        .pill-dropdown:hover {
+            background-color: #3d3e42;
+            border-color: #666;
+        }
+
+        .pill-dropdown.active {
+            background-color: #ffc107;
+            color: #000;
+            border-color: #ffc107;
+        }
+
+        .pill-dropdown .text-muted {
+            font-size: 0.75rem;
+            margin-left: 8px;
+        }
+
+    .platform-grid {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 12px;
+        justify-items: center;
     }
 
-    .pill-dropdown.active {
-        background: #ffc107; /* Amarillo de tu captura */
-        color: black;
-        border-color: #ffc107;
+    /* El botón circular del logo */
+    .platform-icon-btn {
+        width: 55px;
+        height: 55px;
+        border-radius: 50%;
+        background: #2b2b2b;
+        border: 2px solid transparent;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 10px;
+        transition: all 0.2s ease;
+        cursor: pointer;
     }
 
-    /* Menú Desplegable con Glassmorphism */
+        .platform-icon-btn img {
+            width: 100%;
+            height: auto;
+            object-fit: contain;
+        }
+
+        .platform-icon-btn:hover {
+            background: #3d3e42;
+            transform: scale(1.1);
+            border-color: #666;
+        }
+
+        /* Estado seleccionado */
+        .platform-icon-btn.selected {
+            background: #ffc107;
+            border-color: #ffc107;
+        }
+
+            .platform-icon-btn.selected img {
+                filter: brightness(0); /* Pone el logo en negro si el fondo es amarillo */
+            }
+
+    /* Botón de limpiar */
+    .btn-clear {
+        background: #444;
+        color: white;
+        font-size: 1.2rem;
+    }
+    /* --- MENÚ DESPLEGABLE (DROPDOWN) --- */
     .custom-dropdown-menu {
-        min-width: 200px !important; /* Ajustado para el rango de años */
-        background: rgba(25, 25, 25, 0.9) !important;
-        backdrop-filter: blur(12px);
-        border: 1px solid rgba(255, 255, 255, 0.1) !important;
+        position: absolute !important; /* IMPORTANTE: flota, no empuja */
+        z-index: 1100;
+        min-width: 200px !important;
+        background: rgba(30, 30, 30, 0.98) !important;
+        backdrop-filter: blur(10px);
+        border: 1px solid #444 !important;
         border-radius: 12px !important;
+        margin-top: 5px !important;
+        box-shadow: 0 8px 16px rgba(0,0,0,0.5);
+        display: none;
     }
 
-    .custom-dropdown-menu.show {
-        display: block; /* Esto es lo que hace que aparezca al hacer clic */
-        position: absolute;
-        background: rgba(30, 30, 30, 0.9);
-        backdrop-filter: blur(10px);
-        border: 1px solid #444;
-        z-index: 1000;
-    }
+        .custom-dropdown-menu.show {
+            position: absolute !important;
+            display: block;
+            z-index: 1000;
+        }
 
     .dropdown-item {
+        color: #ddd !important;
         border-radius: 6px;
         padding: 8px 15px;
         font-size: 0.9rem;
+        cursor: pointer;
     }
+
+        .dropdown-item:hover {
+            background-color: rgba(255, 255, 255, 0.1) !important;
+        }
 
     .active-item {
         background-color: #ffc107 !important;
@@ -249,33 +413,69 @@
         font-weight: bold;
     }
 
+    /* --- CARTELERA Y CARDS --- */
+    .movie-card {
+        transition: transform 0.3s ease, box-shadow 0.3s ease;
+        cursor: pointer;
+        background-color: transparent;
+    }
+
+        .movie-card:hover {
+            transform: scale(1.05);
+            z-index: 10;
+            box-shadow: 0 10px 20px rgba(0,0,0,0.5);
+        }
+
+    .poster-container {
+        border-radius: 8px;
+        overflow: hidden;
+        box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+    }
+
+        .poster-container img {
+            aspect-ratio: 2/3;
+            object-fit: cover;
+            width: 100%;
+        }
+
+    .imdb-rating-badge {
+        position: absolute;
+        top: 10px;
+        right: 10px;
+        background: rgba(0, 0, 0, 0.7);
+        color: #ffc107;
+        padding: 2px 8px;
+        border-radius: 6px;
+        font-size: 0.75rem;
+        font-weight: bold;
+        backdrop-filter: blur(4px);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    /* --- MODALES Y FEEDBACK --- */
     .custom-modal-overlay {
         position: fixed;
-        top: 0; left: 0; width: 100%; height: 100%;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
         background: rgba(0,0,0,0.85);
-        backdrop-filter: blur(10px); /* Desenfoque de fondo */
+        backdrop-filter: blur(10px);
         z-index: 9999;
-        display: flex; align-items: center; justify-content: center;
+        display: flex;
+        align-items: center;
+        justify-content: center;
     }
 
     .custom-modal-content {
         background: #1a1a1a;
         border: 1px solid #444;
         border-radius: 16px;
-        width: 90%; max-width: 600px;
+        width: 90%;
+        max-width: 600px;
         padding: 25px;
         max-height: 80vh;
         overflow-y: auto;
-    }
-
-    .option-card {
-        cursor: pointer;
-        transition: transform 0.2s, border-color 0.2s;
-    }
-
-    .option-card:hover {
-        transform: scale(1.05);
-        border-color: #ffc107 !important;
     }
 
     .feedback-toast {
@@ -291,11 +491,10 @@
     }
 
     @@keyframes slideInRight {
-        from { transform: translateX(100%); opacity: 0; }
+        from{ transform: translateX(100%); opacity: 0; }
         to { transform: translateX(0); opacity: 1; }
+
     }
-
-
 </style>
 
 
@@ -305,13 +504,44 @@
     private string textoBusqueda = "";
     private bool buscandoEnApi = false;
     private List<FiltroDecada> filtrosDecadas = new();
+
     private bool mostrarDropdown = false; 
+    private bool mostrarGenero = false;
+    private bool mostrarRating = false;
+    private bool mostrarPlataforma = false;
+
     private void ToggleDropdown() => mostrarDropdown = !mostrarDropdown;
+    private void ToggleGenero() => mostrarGenero = !mostrarGenero;
+    private void ToggleRating() => mostrarRating = !mostrarRating;
+
+
     private List<Movie> resultadosExternos = new(); // Para guardar lo que traiga la API
     private bool mostrarModalExterno = false;       // Para controlar si el modal se ve o no
     private bool mostrarFeedback = false;
     private string peliculaAgregada = "";
+    private string? generoSeleccionado = null;
+    private string? plataformaSeleccionada = null;
+    private double? ratingSeleccionado = null;
+    private List<string> generos = new() { "Action", "Drama", "Comedy", "Thriller", "Horror", "Sci-Fi" };
 
+
+    private List<string> plataformasFrecuentes = new() { "Netflix", "MAX", "Disney+", "Prime Video", "AppleTV", "MUBI", "Clarovideo", "Paramount Plus" };
+
+    private void TogglePlataforma() => mostrarPlataforma = !mostrarPlataforma;
+
+    private async Task CerrarPlataforma()
+    {
+        await Task.Delay(200); // Delay para que tome el click antes de cerrar
+        mostrarPlataforma = false;
+        StateHasChanged();
+    }
+
+    private async Task SeleccionarPlataforma(string? p)
+    {
+        plataformaSeleccionada = p;
+        mostrarPlataforma = false;
+        await CargarCatalogo(); // Esto dispara la query con el JOIN en el backend
+    }
 
     private List<Movie> PeliculasFiltradas
     {
@@ -319,16 +549,17 @@
         {
             var query = peliculas ?? new();
 
-            // Filtro de Texto
+            // Filtro 1: Texto (Búsqueda en el cliente)
             if (!string.IsNullOrWhiteSpace(textoBusqueda))
                 query = query.Where(p => p.Title.Contains(textoBusqueda, StringComparison.OrdinalIgnoreCase)).ToList();
 
-            // Filtro de Década (combinado)
+            // Filtro 2: Década (Lógica de rangos)
             var seleccionado = filtrosDecadas.FirstOrDefault(f => f.Seleccionado);
             if (seleccionado != null)
                 query = query.Where(p => p.Year >= seleccionado.AnioInicio && p.Year <= seleccionado.AnioInicio + 9).ToList();
 
-            return query;
+            // Mantenemos el orden por rating también en el filtrado de memoria
+            return query.OrderByDescending(p => p.ImdbRating).ToList();
         }
     }
 
@@ -344,6 +575,19 @@
         StateHasChanged();
     }
 
+    private async Task CerrarGenero()
+    {
+        await Task.Delay(200);
+        mostrarGenero = false;
+        StateHasChanged();
+    }
+
+    private async Task CerrarRating()
+    {
+        await Task.Delay(200);
+        mostrarRating = false;
+        StateHasChanged();
+    }
 
 
 
@@ -391,11 +635,23 @@
 
 
 
-    private async Task CargarCatalogo()
+    private async Task CargarCatalogo(string? genero = null, double? minRating = null)
     {
         try
         {
-            peliculas = await Http.GetFromJsonAsync<List<Movie>>("api/Movies");
+            var queryParams = new List<string>();
+
+            if (!string.IsNullOrEmpty(generoSeleccionado))
+                queryParams.Add($"genre={generoSeleccionado}");
+
+            if (ratingSeleccionado.HasValue && ratingSeleccionado > 0)
+                queryParams.Add($"minRating={ratingSeleccionado.Value.ToString(System.Globalization.CultureInfo.InvariantCulture)}");
+
+            if (!string.IsNullOrEmpty(plataformaSeleccionada))
+                queryParams.Add($"platform={plataformaSeleccionada}");
+
+            var url = "api/Movies" + (queryParams.Any() ? "?" + string.Join("&", queryParams) : "");
+            peliculas = await Http.GetFromJsonAsync<List<Movie>>(url);
         }
         catch (Exception ex)
         {
@@ -443,28 +699,42 @@
     private async Task ConfirmarYGuardar(Movie peli)
     {
         // El usuario ya eligió, ahora sí impactamos la base de datos local.
-        var response = await Http.PostAsJsonAsync("api/Movies", peli);
+        var response = await Http.PostAsJsonAsync("api/Movies/save-by-id", peli.ImdbID);
 
         if (response.IsSuccessStatusCode)
         {
-            
             peliculaAgregada = peli.Title;
-            mostrarModalExterno = false; 
-            mostrarFeedback = true;      
+            mostrarModalExterno = false;
+            mostrarFeedback = true;
 
-            StateHasChanged(); // Forzamos el renderizado para que aparezca el toast
+            StateHasChanged();
 
             await Task.Delay(2500);
 
-           
             mostrarFeedback = false;
             textoBusqueda = "";
-            await CargarCatalogo(); 
+            await CargarCatalogo();
         }
         else
         {
-            Console.WriteLine("Error al guardar la película.");
+            // Leemos el mensaje de error del backend (por ejemplo, si ya existe)
+            var errorMsg = await response.Content.ReadAsStringAsync();
+            Console.WriteLine($"Error al guardar: {errorMsg}");
         }
+
     }
 
+    private async Task SeleccionarGenero(string? g)
+    {
+        generoSeleccionado = g;
+        mostrarGenero = false;
+        await CargarCatalogo();
+    }
+
+    private async Task SeleccionarRating(double? r)
+    {
+        ratingSeleccionado = r;
+        mostrarRating = false;
+        await CargarCatalogo();
+    }
 }

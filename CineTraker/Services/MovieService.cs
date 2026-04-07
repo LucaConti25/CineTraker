@@ -9,7 +9,7 @@ namespace CineTraker.Services
     public class MovieService
     {
         private readonly HttpClient _httpClient;
-        private readonly string _apiKey = "1860b29f";
+        private readonly string _apiKey = "35405d4a";
         private readonly AppDbContext _context;
 
         public MovieService(AppDbContext context, HttpClient httpClient)
@@ -18,10 +18,6 @@ namespace CineTraker.Services
             _context = context;
         }
 
-        
-        
-        
-        
         
         public async Task<OmdbResponse?> GetMovieFromApiAsync(string title)
         {
@@ -38,25 +34,31 @@ namespace CineTraker.Services
 
 
 
-
-
-
         public async Task<Movie?> BuscarEnOmdbPorIdAsync(string imdbId)
         {
             
-            string apiKey = "1860b29f";
-            var response = await _httpClient.GetFromJsonAsync<OmdbResponse>($"https://www.omdbapi.com/?i={imdbId}&apikey={apiKey}");
+            
+            var response = await _httpClient.GetFromJsonAsync<OmdbResponse>($"https://www.omdbapi.com/?i={imdbId}&apikey={_apiKey}");
 
             if (response != null && response.Response == "True")
             {
+
+                var runtimeLimpio = response.Runtime?.Replace(" min", "").Replace("N/A", "0");
+                
+
                 return new Movie
                 {
                     Title = response.Title,
-                    Year = int.Parse(response.Year.Substring(0, 4)),
+                    Year = int.TryParse(response.Year.Substring(0, 4), out int y) ? y : 0,
                     Director = response.Director,
                     Plot = response.Plot,
                     PosterUrl = response.Poster,
-                    ImdbID = response.imdbID
+                    ImdbID = response.imdbID,
+                    Genre = response.Genre,
+                    Runtime = int.TryParse(runtimeLimpio, out int r) ? r : 0,
+                    Actors = response.Actors,
+                    Rated = response.Rated,
+                    ImdbRating = response.imdbRating
                 };
             }
             return null;
@@ -112,8 +114,7 @@ namespace CineTraker.Services
 
         public async Task<List<Movie>> SearchMoviesFromApiAsync(string title)
         {
-            // Usamos el parámetro 's=' (Search) de OMDb. 
-            // A diferencia de 't=', este nos devuelve un array con todas las coincidencias.
+            
             var response = await _httpClient.GetFromJsonAsync<OmdbSearchResponse>(
                 $"https://www.omdbapi.com/?s={title}&apikey={_apiKey}");
 
@@ -126,7 +127,6 @@ namespace CineTraker.Services
             return response.Search.Select(m => new Movie
             {
                 Title = m.Title,
-                // OMDb a veces manda años como "2018–2022", limpiamos para quedarnos con el int
                 Year = int.TryParse(m.Year.Substring(0, 4), out int year) ? year : 0,
                 PosterUrl = m.Poster,
                 ImdbID = m.imdbID
