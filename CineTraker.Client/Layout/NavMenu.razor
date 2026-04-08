@@ -1,26 +1,36 @@
-﻿<div class="top-row ps-3 navbar navbar-dark">
-    <div class="container-fluid">
-        <a class="navbar-brand" href="">CineTraker.Client</a>
-        <button title="Navigation menu" class="navbar-toggler" @onclick="ToggleNavMenu">
-            <span class="navbar-toggler-icon"></span>
-        </button>
+﻿<div class="sidebar-container @NavMenuCssClass">
+    <div class="top-row ps-3 navbar navbar-dark">
+        <div class="container-fluid">
+            @if (!collapseNavMenu)
+            {
+                    <a class="navbar-brand" href="">CineTraker</a>
+            }
+            <button title="Navigation menu" class="navbar-toggler" @onclick="ToggleNavMenu">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+        </div>
+    </div>
+
+    <div class="nav-scrollable">
+        <nav class="flex-column">
+            <div class="nav-item px-3">
+                <NavLink class="nav-link" href="" Match="NavLinkMatch.All">
+                    <span class="bi bi-house-door-fill-nav-menu" aria-hidden="true"></span>
+                    @if (!collapseNavMenu)
+                    {
+                            <span class="nav-text ms-2">Inicio</span>
+                    }
+                </NavLink>
+            </div>
+        </nav>
     </div>
 </div>
 
-<div class="@NavMenuCssClass nav-scrollable" @onclick="ToggleNavMenu">
-    <nav class="flex-column">
-        <div class="nav-item px-3">
-            <NavLink class="nav-link" href="" Match="NavLinkMatch.All">
-                <span class="bi bi-house-door-fill-nav-menu" aria-hidden="true"></span> Inicio
-            </NavLink>
-        </div>
-    </nav>
-</div>
-
 @code {
-    private bool collapseNavMenu = true;
+    private bool collapseNavMenu = false;
 
-    private string? NavMenuCssClass => collapseNavMenu ? "collapse" : null;
+    // Esta clase se aplica al contenedor principal del componente
+    private string NavMenuCssClass => collapseNavMenu ? "menu-collapsed" : "menu-expanded";
 
     private void ToggleNavMenu()
     {

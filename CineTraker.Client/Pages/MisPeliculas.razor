@@ -122,42 +122,29 @@
             <button class="pill-dropdown @(!string.IsNullOrEmpty(plataformaSeleccionada) ? "active" : "")"
                     type="button" @onclick="TogglePlataforma" @onfocusout="CerrarPlataforma">
 
-                @if (!string.IsNullOrEmpty(plataformaSeleccionada))
-                {
-                    <span class="fw-bold">@plataformaSeleccionada.ToUpper()</span>
-                }
-                else
-                {
-                    <span>PLATAFORMA</span>
-                    <span class="ms-2 text-muted">---</span>
-                }
+                        @if (!string.IsNullOrEmpty(plataformaSeleccionada))
+                        {
+                        <span class="fw-bold">@plataformaSeleccionada.ToUpper()</span>
+                        }
+                        else
+                        {
+                        <span>PLATAFORMA</span>
+                        <span class="ms-2 text-muted">---</span>
+                        }
                 <i class="bi bi-chevron-down ms-2 small"></i>
             </button>
 
-            <ul class="dropdown-menu dropdown-menu-dark custom-dropdown-menu @(mostrarPlataforma ? "show" : "")"
-                style="min-width: 250px; padding: 20px;">
-
-                <h6 class="dropdown-header text-uppercase small pb-3">Disponibles en:</h6>
-
-                <div class="platform-grid">
-                    @foreach (var plat in plataformasFrecuentes)
-                    {
-                        <button class="platform-icon-btn @(plataformaSeleccionada == plat ? "selected" : "")"
-                                title="@plat"
-                                @onmousedown="() => SeleccionarPlataforma(plat)">
-                            @* Acá podés usar una URL local o externa. 
-                       Si tenés los logos en wwwroot/images/logos, usá esa ruta.
-                    *@
-                            <img src="/images/logos/@(plat.ToLower().Replace(" ", "-")).png"
-                                 onerror="this.src='https://img.icons8.com/color/48/video-playlist.png'" />
-                        </button>
-                    }
-
-                    @* Botón para limpiar filtro *@
-                    <button class="platform-icon-btn btn-clear" @onmousedown="() => SeleccionarPlataforma(null)">
-                        <i class="bi bi-x-lg"></i>
-                    </button>
-                </div>
+            <ul class="dropdown-menu dropdown-menu-dark custom-dropdown-menu @(mostrarPlataforma ? "show" : "")">
+                <li><button class="dropdown-item" @onmousedown='() => SeleccionarPlataforma(null)'>CUALQUIERA</button></li>
+                        @foreach (var plat in plataformasFrecuentes)
+                        {
+                        <li>
+                            <button class="dropdown-item @(plataformaSeleccionada == plat ? "active-item" : "")" 
+                                    @onmousedown="() => SeleccionarPlataforma(plat)">
+                                    @plat.ToUpper()
+                            </button>
+                        </li>
+                        }
             </ul>
         </div>
         @* Acá irían las otras píldoras (GÉNERO, DIRECTOR, etc.) siguiendo la misma estructura *@
@@ -332,49 +319,55 @@
         justify-items: center;
     }
 
-    /* El botón circular del logo */
-    .platform-icon-btn {
-        width: 55px;
-        height: 55px;
-        border-radius: 50%;
-        background: #2b2b2b;
-        border: 2px solid transparent;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        padding: 10px;
-        transition: all 0.2s ease;
-        cursor: pointer;
-    }
+   /* --- ESTILOS PARA EL DROPDOWN DE TEXTO --- */
+.custom-dropdown-menu {
+    position: absolute !important;
+    z-index: 1100;
+    min-width: 200px !important;
+    background: rgba(30, 30, 30, 0.98) !important;
+    backdrop-filter: blur(10px);
+    border: 1px solid #444 !important;
+    border-radius: 12px !important;
+    margin-top: 5px !important;
+    box-shadow: 0 8px 16px rgba(0,0,0,0.5);
+    padding: 8px !important;
+    display: none;
+}
 
-        .platform-icon-btn img {
-            width: 100%;
-            height: auto;
-            object-fit: contain;
-        }
+.custom-dropdown-menu.show {
+    display: block !important;
+}
 
-        .platform-icon-btn:hover {
-            background: #3d3e42;
-            transform: scale(1.1);
-            border-color: #666;
-        }
+.dropdown-item {
+    color: #ddd !important;
+    border-radius: 6px !important;
+    padding: 10px 15px !important;
+    font-size: 0.9rem !important;
+    cursor: pointer !important;
+    background: transparent !important;
+    border: none !important;
+    width: 100% !important;
+    text-align: left !important;
+    transition: all 0.2s ease;
+}
 
-        /* Estado seleccionado */
-        .platform-icon-btn.selected {
-            background: #ffc107;
-            border-color: #ffc107;
-        }
+.dropdown-item:hover {
+    background-color: rgba(255, 255, 255, 0.1) !important;
+    color: white !important;
+}
 
-            .platform-icon-btn.selected img {
-                filter: brightness(0); /* Pone el logo en negro si el fondo es amarillo */
-            }
+/* El item seleccionado se pone amarillo como los otros */
+.active-item {
+    background-color: #ffc107 !important;
+    color: black !important;
+    font-weight: bold !important;
+}
+.dropdown-divider {
+    margin: 5px 10px;
+    opacity: 0.2;
+}
 
-    /* Botón de limpiar */
-    .btn-clear {
-        background: #444;
-        color: white;
-        font-size: 1.2rem;
-    }
+
     /* --- MENÚ DESPLEGABLE (DROPDOWN) --- */
     .custom-dropdown-menu {
         position: absolute !important; /* IMPORTANTE: flota, no empuja */
@@ -648,7 +641,11 @@
                 queryParams.Add($"minRating={ratingSeleccionado.Value.ToString(System.Globalization.CultureInfo.InvariantCulture)}");
 
             if (!string.IsNullOrEmpty(plataformaSeleccionada))
-                queryParams.Add($"platform={plataformaSeleccionada}");
+            {
+                // EscapeDataString convierte el "+" en "%2B" para que llegue bien al servidor
+                var plataformaCodificada = Uri.EscapeDataString(plataformaSeleccionada);
+                queryParams.Add($"platform={plataformaCodificada}");
+            }
 
             var url = "api/Movies" + (queryParams.Any() ? "?" + string.Join("&", queryParams) : "");
             peliculas = await Http.GetFromJsonAsync<List<Movie>>(url);

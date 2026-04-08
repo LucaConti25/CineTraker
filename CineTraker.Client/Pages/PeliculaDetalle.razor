@@ -1,86 +1,92 @@
 ﻿@page "/pelicula/{Id:int}"
 @using CineTraker.Shared
+@using CineTraker.Shared.Models
+@layout MainLayout
 @inject HttpClient Http
 @inject NavigationManager Navigation
+
+<PageTitle>@((pelicula != null) ? pelicula.Title : "Cargando...") - CineTraker</PageTitle>
 
 <div class="container py-5">
     @if (pelicula == null)
     {
             <div class="text-center mt-5">
-                <div class="spinner-border text-danger" role="status"></div>
-                <p class="text-muted mt-2">Cargando detalles de la película...</p>
+                <div class="spinner-border text-warning" role="status"></div>
+                <p class="text-muted mt-2">Buscando en los archivos de CineTraker...</p>
             </div>
     }
     else
     {
-            <button class="btn btn-outline-secondary mb-4" @onclick='() => Navigation.NavigateTo("/")'>
-                <i class="bi bi-arrow-left"></i> Volver al catálogo
-            </button>
+            <div class="mb-4">
+                <button class="btn-volver" @onclick='() => Navigation.NavigateTo("/")'>
+                    <i class="bi bi-arrow-left"></i> Volver al catálogo
+                </button>
+            </div>
 
             <div class="row">
-
+            @* COLUMNA IZQUIERDA: PÓSTER Y STREAMING *@
                 <div class="col-md-4 mb-4">
-                    <img src="@pelicula.PosterUrl" class="img-fluid rounded shadow-lg w-100" alt="@pelicula.Title" />
+                    <div class="poster-wrapper">
+                        <img src="@pelicula.SafePosterUrl" class="img-fluid rounded shadow-lg w-100" alt="@pelicula.Title" />
+                    </div>
 
-                @* esto es lo de streaming*@
-                    <div class="mt-4 p-3 rounded" style="background-color: #1a1a1a; border: 1px solid #333;">
-                        <p class="text-uppercase fw-bold mb-2" style="color: #888; font-size: 0.85rem; letter-spacing: 1px;">
-                            Disponible en:
-                        </p>
-                    <div class="d-flex flex-wrap gap-3 mt-2">
-                            @if (pelicula.Sources != null && pelicula.Sources.Any())
+                    <div class="mt-4 p-3 rounded streaming-container">
+                        <p class="streaming-title">Disponible en:</p>
+                        <div class="d-flex flex-wrap gap-3 mt-2">
+                        @if (pelicula.Sources != null && pelicula.Sources.Any())
+                        {
+                            @foreach (var source in pelicula.Sources)
                             {
-                                @foreach (var source in pelicula.Sources)
-                                {
-                                    <a href="@source.WebUrl" target="_blank" title="@source.Name" class="logo-link">
-                                        @if (!string.IsNullOrEmpty(source.LogoUrl))
-                                        {
-                                            <img src="@source.LogoUrl" alt="@source.Name" class="platform-logo" />
-                                        }
-                                        else
-                                        {
-                                            <span class="streaming-btn">@source.Name</span>
-                                        }
-                                    </a>
-                                }
+                                            <a href="@source.WebUrl" target="_blank" title="@source.Name" class="logo-link">
+                                    @if (!string.IsNullOrEmpty(source.LogoUrl))
+                                    {
+                                                        <img src="@source.LogoUrl" alt="@source.Name" class="platform-logo" 
+                                                             onerror="this.style.display='none'; this.nextElementSibling.style.display='block';" />
+                                                        <span class="streaming-btn-text" style="display:none;">@source.Name</span>
+                                    }
+                                    else
+                                    {
+                                                        <span class="streaming-btn-text">@source.Name</span>
+                                    }
+                                            </a>
                             }
-                            else
-                            {
-                                <span class="text-muted small">No disponible en suscripción (AR)</span>
-                            }
+                        }
+                        else
+                        {
+                                    <span class="text-muted small">No disponible en suscripción (AR)</span>
+                        }
                         </div>
                     </div>
                 </div>
 
-
+            @* COLUMNA DERECHA: INFO Y REVIEW *@
                 <div class="col-md-8 text-light">
-                    <h1 class="display-4 fw-bold">@pelicula.Title</h1>
-                    <p class="lead text-muted">@pelicula.Year | Dirigida por @pelicula.Director</p>
+                    <h1 class="display-4 fw-bold mb-0">@pelicula.Title</h1>
+                    <p class="lead text-muted">@pelicula.Year | Dirigida por <span class="text-light">@pelicula.Director</span></p>
 
-                    <hr class="border-secondary" />
+                    <hr class="border-secondary opacity-25" />
 
-                    <h5 class="fw-bold text-info">Sinopsis</h5>
-                    <p style="font-size: 1.1rem; line-height: 1.6;">@pelicula.Plot</p>
+                    <h5 class="fw-bold text-warning mb-3">Sinopsis</h5>
+                    <p class="plot-text">@pelicula.Plot</p>
 
-                
-                    <div class="mt-5 p-4 rounded shadow-sm" style="background-color: #1e1e1e; border: 1px solid #333;">
+                @* SECCIÓN DE PUNTUACIÓN *@
+                    <div class="mt-5 p-4 rounded review-box">
                         <h4 class="text-light mb-3">⭐ Dejá tu puntuación</h4>
 
                         <div class="mb-3 d-flex gap-2">
                         @for (int i = 1; i <= 5; i++)
                         {
                             int starIndex = i;
-                                    <i class="bi @(starIndex <= puntajeSeleccionado ? "bi-star-fill text-warning" : "bi-star text-secondary")" 
-                                       style="cursor: pointer; font-size: 2rem;" 
+                                    <i class="bi @(starIndex <= puntajeSeleccionado ? "bi-star-fill text-warning" : "bi-star text-secondary") star-icon" 
                                        @onclick="() => SeleccionarPuntaje(starIndex)"></i>
                         }
                         </div>
 
-                        <textarea class="form-control bg-dark text-light border-secondary mb-3 shadow-none" 
-                                  rows="3" placeholder="Escribí una breve reseña..." 
+                        <textarea class="form-control bg-dark text-light border-secondary mb-3 shadow-none custom-textarea" 
+                                  rows="3" placeholder="¿Qué te pareció esta obra maestra?..." 
                                   @bind="comentarioUsuario"></textarea>
 
-                        <button class="btn btn-warning fw-bold px-4 shadow" @onclick="GuardarReview" disabled="@estaGuardando">
+                        <button class="btn btn-warning fw-bold px-4 shadow btn-save" @onclick="GuardarReview" disabled="@(estaGuardando || puntajeSeleccionado == 0)">
                         @if (estaGuardando)
                         {
                                     <span class="spinner-border spinner-border-sm me-2"></span>
@@ -91,24 +97,23 @@
                 </div> 
             </div> 
 
-        
-            <div class="mt-5 pt-4 border-top border-secondary">
+            <div class="mt-5 pt-4 border-top border-secondary opacity-50">
                 <h3 class="text-light mb-4">Comentarios de CineTrakers</h3>
 
             @if (reviewsExistentes == null || !reviewsExistentes.Any())
             {
-                        <div class="p-4 rounded bg-dark text-center text-muted border border-secondary border-dashed">
-                            <i class="bi bi-chat-dots d-block mb-2" style="font-size: 2rem;"></i>
+                        <div class="p-5 rounded bg-dark text-center text-muted border border-secondary border-dashed empty-comments">
+                            <i class="bi bi-chat-dots d-block mb-3 fs-1"></i>
                             Nadie comentó todavía sobre "@pelicula.Title". ¡Sé el primero!
                         </div>
             }
             else
             {
                         <div class="row row-cols-1 g-3">
-                    @foreach (var rev in reviewsExistentes)
+                    @foreach (var rev in reviewsExistentes.OrderByDescending(r => r.Id))
                     {
                                     <div class="col">
-                                        <div class="card bg-dark border-secondary shadow-sm">
+                                        <div class="card bg-dark border-secondary shadow-sm comment-card">
                                             <div class="card-body">
                                                 <div class="d-flex justify-content-between align-items-start">
                                                     <div class="text-warning mb-2">
@@ -117,7 +122,7 @@
                                                                 <i class="bi @(i <= rev.Stars ? "bi-star-fill" : "bi-star text-secondary")"></i>
                                             }
                                                     </div>
-                                                    <span class="text-muted small">#@rev.Id</span>
+                                                    <span class="text-muted small">CineTraker #@rev.Id</span>
                                                 </div>
                                                 <p class="text-light mb-0" style="white-space: pre-wrap;">@rev.Comment</p>
                                             </div>
@@ -131,93 +136,82 @@
 </div>
 
 <style>
-    .streaming-box {
-        background-color: rgba(255, 255, 255, 0.05);
-        border: 1px solid rgba(255, 255, 255, 0.1);
-        border-radius: 12px;
-        padding: 1.5rem;
-        margin-top: 2rem;
+    .plot-text { font-size: 1.15rem; line-height: 1.7; color: #e0e0e0; }
+
+    .btn-volver {
+        background: rgba(255,255,255,0.05);
+        color: #aaa;
+        border: 1px solid #333;
+        padding: 8px 18px;
+        border-radius: 50px;
+        transition: all 0.3s;
+    }
+    .btn-volver:hover { 
+        background: #ffc107; 
+        color: black; 
+        border-color: #ffc107; 
+        transform: translateX(-5px);
     }
 
-    .streaming-title {
-        color: #888;
-        font-size: 0.75rem;
-        font-weight: 700;
-        text-transform: uppercase;
-        letter-spacing: 1.5px;
-        margin-bottom: 1rem;
-    }
-
-    .streaming-btn {
-        color: #f3ce13;
-        font-size: 0.6rem;
-        font-weight: bold;
-        text-align: center;
-        text-transform: uppercase;
-    }
-
-        .streaming-btn:hover {
-            background-color: #00adff;
-            color: #fff;
-            transform: translateY(-3px);
-            box-shadow: 0 5px 15px rgba(0, 173, 255, 0.4);
-        }
-
-    /* Texto cuando no hay nada */
-    .no-sources {
-        font-style: italic;
-        color: #666;
-        font-size: 0.9rem;
-    }
-
-    .platform-logo {
-        width: 100%;
-        height: 100%;
-        object-fit: cover; /* se rellena circulo */
-        object-position: center;
-    }
-
-        .platform-logo:hover {
-            background: rgba(255, 255, 255, 0.15);
-            border-color: #f3ce13; 
-            transform: scale(1.05);
-        }
+    .streaming-container { background-color: #1a1a1a; border: 1px solid #333; }
+    .streaming-title { color: #666; font-size: 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 1.5px; }
 
     .logo-link {
         display: inline-flex;
         align-items: center;
         justify-content: center;
-        width: 55px; 
+        width: 55px;
         height: 55px;
-        background: transparent; 
-        border: 2px solid rgba(255, 255, 255, 0.2); 
         border-radius: 50%;
+        background-color: #252525;
+        border: 2px solid rgba(255, 255, 255, 0.2);
+        overflow: hidden;
+        text-decoration: none !important;
         transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-        padding: 0; 
-        text-decoration: none;
-        overflow: hidden; /* Mantiene el recorte circular */
         box-shadow: 0 4px 10px rgba(0, 0, 0, 0.4);
     }
 
-        .logo-link:hover {
-            transform: scale(1.1) translateY(-3px);
-            border-color: #f3ce13; 
-            box-shadow: 0 0 15px rgba(243, 206, 19, 0.5); 
-        }
+    .platform-logo {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+    }
+
+    .streaming-btn-text {
+        color: #f3ce13;
+        font-size: 0.6rem;
+        font-weight: bold;
+        text-align: center;
+        text-transform: uppercase;
+        padding: 5px;
+        line-height: 1.1;
+    }
+
+    .logo-link:hover {
+        border-color: #ffc107;
+        transform: scale(1.1) translateY(-3px);
+        box-shadow: 0 0 15px rgba(243, 206, 19, 0.5);
+    }
+
+    .review-box { background-color: #1e1e1e; border: 1px solid #333; }
+    .star-icon { cursor: pointer; font-size: 1.8rem; transition: transform 0.2s; }
+    .star-icon:hover { transform: scale(1.2); }
+    .custom-textarea:focus { background-color: #111 !important; border-color: #ffc107 !important; }
+
+    .comment-card { transition: border-color 0.3s; }
+    .comment-card:hover { border-color: #ffc107 !important; }
+    .border-dashed { border-style: dashed !important; }
 </style>
 
 @code {
     [Parameter] public int Id { get; set; }
     private Movie? pelicula;
-    private List<Review> reviewsExistentes = new(); 
+    private List<Review> reviewsExistentes = new();
     private int puntajeSeleccionado = 0;
     private string comentarioUsuario = "";
     private bool estaGuardando = false;
 
-    protected override async Task OnInitializedAsync()
-    {
-        await CargarDatos();
-    }
+    protected override async Task OnInitializedAsync() => await CargarDatos();
 
     private async Task CargarDatos()
     {
@@ -235,20 +229,13 @@
     {
         if (puntajeSeleccionado == 0) return;
         estaGuardando = true;
-
-        var nueva = new Review
-            {
-                MovieId = Id,
-                Stars = puntajeSeleccionado,
-                Comment = comentarioUsuario
-            };
-
+        var nueva = new Review { MovieId = Id, Stars = puntajeSeleccionado, Comment = comentarioUsuario };
         var res = await Http.PostAsJsonAsync("api/Reviews", nueva);
         if (res.IsSuccessStatusCode)
         {
             comentarioUsuario = "";
             puntajeSeleccionado = 0;
-            await CargarDatos(); 
+            await CargarDatos();
         }
         estaGuardando = false;
     }

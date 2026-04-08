@@ -1,20 +1,17 @@
 ﻿@inherits LayoutComponentBase
 
 <div class="page">
-    <div class="sidebar">
-        <NavMenu />
-    </div>
+    @* El NavMenu define la columna izquierda *@
+    <NavMenu />
 
     <main>
+        @* Dejamos la top-row vacía o la usamos solo como espaciador superior *@
+        <div class="top-row px-4">
+            @* Borramos el link de GitHub *@
+        </div>
+
         <article class="content px-4">
             @Body
         </article>
     </main>
 </div>
-
-<style>
-    main {
-        background-color: #141414; 
-        min-height: 100vh;
-    }
-</style>

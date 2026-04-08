@@ -98,6 +98,39 @@ a, .btn-link {
         content: var(--blazor-load-percentage-text, "Loading");
     }
 
+
+.sidebar {
+    width: 250px;
+    transition: width 0.3s ease;
+    overflow-x: hidden;
+}
+
+    /* Estado cerrado */
+    .sidebar.collapsed {
+        width: 80px; /* O 0px si querés que desaparezca del todo */
+    }
+
+/* Ajuste del contenido principal para que se expanda */
+.page {
+    display: flex;
+}
+
+main {
+    flex: 1;
+    transition: margin-left 0.3s ease;
+}
+
+/* Estilo para el botón de hamburguesa */
+.btn-toggle {
+    background: none;
+    border: none;
+    color: white;
+    font-size: 1.5rem;
+    cursor: pointer;
+}
+
 code {
     color: #c02d76;
 }
+
+

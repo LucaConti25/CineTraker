@@ -40,6 +40,8 @@ namespace CineTraker
             builder.Services.AddHttpClient<MovieService>();
             builder.Services.AddScoped<StreamingService>();
 
+            
+
             builder.Services.AddCors(options =>
             {
                 options.AddDefaultPolicy(policy =>
@@ -49,6 +51,7 @@ namespace CineTraker
                           .AllowAnyMethod();
                 });
             });
+
 
             var app = builder.Build();
             app.UseStaticFiles();
