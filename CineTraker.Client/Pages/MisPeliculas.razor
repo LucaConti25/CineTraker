@@ -2,7 +2,7 @@
 @using CineTraker.Shared
 @using CineTraker.Shared.Models
 @inject HttpClient Http
-
+@inject IJSRuntime JS
 <PageTitle>CineTraker - Inicio</PageTitle>
 
 <div class="container-fluid pt-2 pt-md-4 px-3 px-md-5">
@@ -155,7 +155,7 @@
     @* CARTELERA DE PELÍCULAS *@
     <h2 class="fw-bold mb-4 text-light">Cartelera</h2>
 
-    @if (peliculas == null)
+    @if (peliculas.Count == 0 && !finDelCatalogo)
     {
             <div class="text-center mt-5">
                 <div class="spinner-border text-danger" role="status"></div>
@@ -188,7 +188,16 @@
                     </NavLink>
                 </div>
             }
+
         </div>
+
+        @if (cargandoMas)
+        {
+            <div class="text-center my-4 w-100">
+                <div class="spinner-border text-warning" role="status"></div>
+                <p class="text-muted">Buscando más joyas...</p>
+            </div>
+        }
     }
 </div>
 
@@ -516,7 +525,7 @@
 
 
 @code {
-    private List<Movie>? peliculas; 
+    private List<Movie> peliculas = new List<Movie>();
     private string textoBusqueda = "";
     private bool buscandoEnApi = false;
     private List<FiltroDecada> filtrosDecadas = new();
@@ -525,6 +534,11 @@
     private bool mostrarGenero = false;
     private bool mostrarRating = false;
     private bool mostrarPlataforma = false;
+
+    private int skipActual = 0;        // Cuántas ya cargamos
+    private const int takeTanda = 20;   // Cuántas pedimos por vez
+    private bool cargandoMas = false;   // Para no pedir 2 veces lo mismo mientras carga
+    private bool finDelCatalogo = false; // Para saber si ya no hay más pelis
 
     private void ToggleDropdown() => mostrarDropdown = !mostrarDropdown;
     private void ToggleGenero() => mostrarGenero = !mostrarGenero;
@@ -556,14 +570,14 @@
     {
         plataformaSeleccionada = p;
         mostrarPlataforma = false;
-        await CargarCatalogo(); // Esto dispara la query con el JOIN en el backend
+        await CargarCatalogo(true); // Esto dispara la query con el JOIN en el backend
     }
 
     private List<Movie> PeliculasFiltradas
     {
         get
         {
-            var query = peliculas ?? new();
+            var query = peliculas ?? new List<Movie>();
 
             // Filtro 1: Texto (Búsqueda en el cliente)
             if (!string.IsNullOrWhiteSpace(textoBusqueda))
@@ -574,8 +588,17 @@
             if (seleccionado != null)
                 query = query.Where(p => p.Year >= seleccionado.AnioInicio && p.Year <= seleccionado.AnioInicio + 9).ToList();
 
+            if (!string.IsNullOrEmpty(plataformaSeleccionada))
+            {
+                query = query.Where(p => p.Sources != null &&
+                             p.Sources.Any(s => s.Name.Contains(plataformaSeleccionada))).ToList();
+            }
             // Mantenemos el orden por rating también en el filtrado de memoria
-            return query.OrderByDescending(p => p.ImdbRating).ToList();
+            return query.OrderByDescending(p =>
+            {
+                double.TryParse(p.ImdbRating, System.Globalization.NumberStyles.Any, System.Globalization.CultureInfo.InvariantCulture, out var r);
+                return r;
+            }).ToList();
         }
     }
 
@@ -613,11 +636,46 @@
         {
             filtrosDecadas.Add(new FiltroDecada(anio));
         }
-        await CargarCatalogo();
+
+        var dotNetHelper = DotNetObjectReference.Create(this);
+        await JS.InvokeVoidAsync("inicializarScrollInfinito", dotNetHelper);
+        await CargarCatalogo(true);
     }
 
 
+    [JSInvokable]
+    public async Task CargarSiguientePagina()
+    {
+        // Si ya estamos cargando o si ya no hay más películas, no hacemos nada
+        if (cargandoMas || finDelCatalogo) return;
 
+        cargandoMas = true;
+        skipActual += takeTanda; // Aumentamos el contador (ej. de 0 a 20)
+
+        // Llamamos a la API pidiendo la siguiente tanda
+        var url = $"api/Movies?skip={skipActual}&take={takeTanda}";
+
+        // Mantenemos los filtros activos si existen
+        if (!string.IsNullOrEmpty(generoSeleccionado)) url += $"&genre={generoSeleccionado}";
+        if (ratingSeleccionado.HasValue) url += $"&minRating={ratingSeleccionado.Value.ToString(System.Globalization.CultureInfo.InvariantCulture)}";
+        if (!string.IsNullOrEmpty(plataformaSeleccionada)) url += $"&platform={Uri.EscapeDataString(plataformaSeleccionada)}";
+
+        var nuevasPelis = await Http.GetFromJsonAsync<List<Movie>>(url);
+
+        if (nuevasPelis != null && nuevasPelis.Any())
+        {
+            // LA CLAVE: Agregamos las nuevas a la lista existente en lugar de borrar todo
+            peliculas?.AddRange(nuevasPelis);
+        }
+        else
+        {
+            // Si la API no devolvió nada, es porque llegamos al final del catálogo
+            finDelCatalogo = true;
+        }
+
+        cargandoMas = false;
+        StateHasChanged(); // Refrescamos la UI para que se vean los nuevos pósters
+    }
 
     private void SeleccionarDecada(FiltroDecada filtro)
     {
@@ -651,11 +709,22 @@
 
 
 
-    private async Task CargarCatalogo(string? genero = null, double? minRating = null)
+    private async Task CargarCatalogo(bool esNuevaBusqueda = false)
     {
+        if (esNuevaBusqueda)
+        {
+            skipActual = 0;
+            finDelCatalogo = false;
+            peliculas = new List<Movie>();
+        }
+
         try
         {
             var queryParams = new List<string>();
+
+            // --- NUEVO: Agregamos la paginación a la URL ---
+            queryParams.Add($"skip={skipActual}");
+            queryParams.Add($"take={takeTanda}");
 
             if (!string.IsNullOrEmpty(generoSeleccionado))
                 queryParams.Add($"genre={generoSeleccionado}");
@@ -665,13 +734,32 @@
 
             if (!string.IsNullOrEmpty(plataformaSeleccionada))
             {
-                // EscapeDataString convierte el "+" en "%2B" para que llegue bien al servidor
                 var plataformaCodificada = Uri.EscapeDataString(plataformaSeleccionada);
                 queryParams.Add($"platform={plataformaCodificada}");
             }
 
-            var url = "api/Movies" + (queryParams.Any() ? "?" + string.Join("&", queryParams) : "");
-            peliculas = await Http.GetFromJsonAsync<List<Movie>>(url);
+            var url = "api/Movies?" + string.Join("&", queryParams);
+
+            var resultado = await Http.GetFromJsonAsync<List<Movie>>(url);
+
+            if (resultado != null)
+            {
+                if (esNuevaBusqueda || peliculas == null)
+                {
+                    peliculas = resultado;
+                }
+                else
+                {
+                    // Si no es nueva búsqueda, las sumamos a las que ya están
+                    peliculas.AddRange(resultado);
+                }
+
+                // Si trajo menos de los que pedimos, llegamos al final
+                if (resultado.Count < takeTanda)
+                {
+                    finDelCatalogo = true;
+                }
+            }
         }
         catch (Exception ex)
         {
@@ -733,7 +821,7 @@
 
             mostrarFeedback = false;
             textoBusqueda = "";
-            await CargarCatalogo();
+            await CargarCatalogo(true);
         }
         else
         {
@@ -748,13 +836,13 @@
     {
         generoSeleccionado = g;
         mostrarGenero = false;
-        await CargarCatalogo();
+        await CargarCatalogo(true);
     }
 
     private async Task SeleccionarRating(double? r)
     {
         ratingSeleccionado = r;
         mostrarRating = false;
-        await CargarCatalogo();
+        await CargarCatalogo(true);
     }
 }

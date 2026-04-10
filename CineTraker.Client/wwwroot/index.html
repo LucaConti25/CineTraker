@@ -28,6 +28,15 @@
         <a class="dismiss">🗙</a>
     </div>
     <script src="_framework/blazor.webassembly.js"></script>
+    <script>
+        window.inicializarScrollInfinito = (dotNetHelper) => {
+            window.onscroll = () => {
+                if ((window.innerHeight + window.scrollY) >= document.body.offsetHeight - 200) {
+                    dotNetHelper.invokeMethodAsync('CargarSiguientePagina');
+                }
+            };
+        };
+    </script>
 </body>
 
 </html>

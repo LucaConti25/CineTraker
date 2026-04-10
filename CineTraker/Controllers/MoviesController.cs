@@ -26,7 +26,9 @@ public class MoviesController : ControllerBase
     public async Task<ActionResult<IEnumerable<Movie>>> GetMovies(
         [FromQuery] string? genre = null, 
         [FromQuery] double? minRating = null,
-        [FromQuery] string? platform = null )
+        [FromQuery] string? platform = null,
+        [FromQuery] int skip = 0,        // <--- NUEVO
+        [FromQuery] int take = 20 )
     {
         var query = _context.Movies
         .Include(m => m.Sources)
@@ -53,6 +55,8 @@ public class MoviesController : ControllerBase
         }
         return await query
         .OrderByDescending(m => m.ImdbRating != null && m.ImdbRating != "N/A" ? m.ImdbRating : "0")
+        .Skip(skip) // <--- SALTEA las que ya vimos
+        .Take(take) // <--- TOMA solo la tanda que sigue
         .ToListAsync();
     }
 
