@@ -6,7 +6,7 @@ using Microsoft.EntityFrameworkCore;
 namespace CineTraker
 {
     public class Program
-    {
+    {   
         public static void Main(string[] args)
         {
             
@@ -42,28 +42,22 @@ namespace CineTraker
 
             
 
-            builder.Services.AddCors(options =>
-            {
-                options.AddDefaultPolicy(policy =>
-                {
-                    policy.AllowAnyOrigin()
-                          .AllowAnyHeader()
-                          .AllowAnyMethod();
-                });
-            });
-
-
             var app = builder.Build();
-            app.UseStaticFiles();
-            app.UseCors();
+
             app.UseCors("AllowBlazor");
+            
 
             // Configure the HTTP request pipeline.
             if (app.Environment.IsDevelopment())
             {
                 app.UseSwagger();
                 app.UseSwaggerUI();
+                app.UseWebAssemblyDebugging();
             }
+
+            app.UseBlazorFrameworkFiles();
+            app.UseStaticFiles();
+            app.UseRouting();
 
             app.UseHttpsRedirection();
 
@@ -71,6 +65,7 @@ namespace CineTraker
 
 
             app.MapControllers();
+            app.MapFallbackToFile("index.html");
 
             app.Run();
         }

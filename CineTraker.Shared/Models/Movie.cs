@@ -37,8 +37,8 @@ namespace CineTraker.Shared
             }
         }
 
-        public List<StreamingSource>? Sources { get; set; }
+        public List<StreamingSource>? Sources { get; set; } = new List<StreamingSource>();
 
-        
+
     }
 }
