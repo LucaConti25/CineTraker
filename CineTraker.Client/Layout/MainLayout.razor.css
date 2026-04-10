@@ -32,4 +32,14 @@ article {
     .page {
         flex-direction: column;
     }
+
+    /* Esto elimina la barra vacía que empuja todo hacia abajo */
+    .top-row {
+        display: none !important;
+    }
+
+    /* Esto quita el margen superior del contenido */
+    article.content {
+        padding-top: 0 !important;
+    }
 }

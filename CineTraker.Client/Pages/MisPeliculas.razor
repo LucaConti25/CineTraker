@@ -5,10 +5,10 @@
 
 <PageTitle>CineTraker - Inicio</PageTitle>
 
-<div class="container-fluid py-4 px-5">
+<div class="container-fluid pt-2 pt-md-4 px-3 px-md-5">
 
     @* --- BÚSQUEDA LOCAL E INTELIGENTE --- *@
-    <div class="search-box mb-5 p-4 rounded shadow" style="background-color: #1e1e1e; border: 1px solid #333;">
+    <div class="search-box mt-0 mb-3 p-3 p-md-4 rounded shadow" style="background-color: #1e1e1e; border: 1px solid #333;">
         <h4 class="text-light mb-3">🔍 Buscar en mi catálogo</h4>
         <div class="input-group">
             <input type="text" class="form-control bg-dark text-light border-secondary" 
@@ -486,6 +486,29 @@
     @@keyframes slideInRight {
         from{ transform: translateX(100%); opacity: 0; }
         to { transform: translateX(0); opacity: 1; }
+
+    }
+
+    @@media (max-width: 767.98px) {
+            /* 1. Elimina el relleno que Blazor le pone al contenido principal */
+            main
+
+        {
+            padding-top: 0 !important;
+        }
+
+        /* 2. Achica la barra de navegación superior */
+        .top-row {
+            height: 50px !important;
+            min-height: 50px !important;
+            display: flex;
+            align-items: center;
+        }
+
+        /* 3. Pegar el buscador al borde superior del contenedor */
+        .container-fluid {
+            padding-top: 5px !important;
+        }
 
     }
 </style>
