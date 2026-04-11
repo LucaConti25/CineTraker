@@ -1,5 +1,6 @@
 ﻿using CineTraker.Shared;
 using System.Net.Http.Json;
+using System.Text.Json.Serialization;
 
 namespace CineTraker.Services
 {
@@ -71,6 +72,8 @@ namespace CineTraker.Services
     {
         public string Name { get; set; } = "";
         public string Type { get; set; } = "";
+
+        [JsonPropertyName("web_url")]
         public string WebUrl { get; set; } = "";
     }
 

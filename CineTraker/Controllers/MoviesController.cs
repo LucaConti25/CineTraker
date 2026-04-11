@@ -289,6 +289,8 @@ public class MoviesController : ControllerBase
 
                 if (plataformaExistente != null)
                 {
+                    plataformaExistente.WebUrl = sourceApi.WebUrl;
+
                     peliCompleta.Sources.Add(plataformaExistente);
                 }
                 else
