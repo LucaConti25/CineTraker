@@ -1,13 +1,14 @@
 
-using CineTraker.Services;
 using CineTraker.Data;
+using CineTraker.Services;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 
 namespace CineTraker
 {
     public class Program
     {   
-        public static void Main(string[] args)
+        public static async Task Main(string[] args)
         {
             
             var builder = WebApplication.CreateBuilder(args);
@@ -37,6 +38,14 @@ namespace CineTraker
             builder.Services.AddDbContext<AppDbContext>(options =>
                 options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
 
+            builder.Services.AddIdentity<IdentityUser, IdentityRole>(options => {
+                options.Password.RequireDigit = false; // Por ahora, para que sea fácil testear
+                options.Password.RequiredLength = 4;
+                options.Password.RequireNonAlphanumeric = false;
+                options.Password.RequireUppercase = false;
+            })
+            .AddEntityFrameworkStores<AppDbContext>();
+
             builder.Services.AddHttpClient<MovieService>();
             builder.Services.AddScoped<StreamingService>();
 
@@ -61,13 +70,52 @@ namespace CineTraker
 
             app.UseHttpsRedirection();
 
-            app.UseAuthorization();
+            app.UseAuthentication(); 
+            app.UseAuthorization();  
 
 
             app.MapControllers();
             app.MapFallbackToFile("index.html");
 
-            app.Run();
+            using (var scope = app.Services.CreateScope())
+            {
+                var roleManager = scope.ServiceProvider.GetRequiredService<RoleManager<IdentityRole>>();
+                var userManager = scope.ServiceProvider.GetRequiredService<UserManager<IdentityUser>>();
+
+                // Crea Roles si no existen
+                string[] roles = { "Admin", "User" };
+                foreach (var role in roles)
+                {
+                    if (!await roleManager.RoleExistsAsync(role))
+                    {
+                        await roleManager.CreateAsync(new IdentityRole(role));
+                    }
+                }
+
+                // Crea usuario Admin
+                var adminEmail = "luconti25@gmail.com"; 
+                var adminUser = await userManager.FindByEmailAsync(adminEmail);
+
+                if (adminUser == null)
+                {
+                    var user = new IdentityUser
+                    {
+                        UserName = adminEmail,
+                        Email = adminEmail,
+                        EmailConfirmed = true
+                    };
+
+                    // Creamos el usuario con una contraseña temporal
+                    var result = await userManager.CreateAsync(user, "Admin123!");
+
+                    if (result.Succeeded)
+                    {
+                        // Te asignamos el rol de Admin
+                        await userManager.AddToRoleAsync(user, "Admin");
+                    }
+                }
+            }
+            await app.RunAsync();
         }
     }
 }

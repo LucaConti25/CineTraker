@@ -12,5 +12,6 @@ namespace CineTraker.Shared
         public string? Comment { get; set; }
         public DateTime CreatedAt { get; set; } = DateTime.Now;
         public int MovieId { get; set; }
+        public string? UserId { get; set; }
     }
 }
