@@ -3,7 +3,9 @@ using CineTraker.Data;
 using CineTraker.Services;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
-
+using Microsoft.AspNetCore.Authentication.JwtBearer; 
+using Microsoft.IdentityModel.Tokens;
+using System.Text;
 namespace CineTraker
 {
     public class Program
@@ -45,6 +47,29 @@ namespace CineTraker
                 options.Password.RequireUppercase = false;
             })
             .AddEntityFrameworkStores<AppDbContext>();
+
+
+            var jwtSettings = builder.Configuration.GetSection("Jwt");
+            var key = Encoding.ASCII.GetBytes(jwtSettings["Key"]);
+
+            builder.Services.AddAuthentication(options =>
+            {
+                options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
+                options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
+            })
+            .AddJwtBearer(options =>
+            {
+                options.TokenValidationParameters = new TokenValidationParameters
+                {
+                    ValidateIssuerSigningKey = true,
+                    IssuerSigningKey = new SymmetricSecurityKey(key),
+                    ValidateIssuer = true,
+                    ValidateAudience = true,
+                    ValidIssuer = jwtSettings["Issuer"],
+                    ValidAudience = jwtSettings["Audience"],
+                    ClockSkew = TimeSpan.Zero // Para que el token expire exactamente cuando debe
+                };
+            });
 
             builder.Services.AddHttpClient<MovieService>();
             builder.Services.AddScoped<StreamingService>();
@@ -115,7 +140,9 @@ namespace CineTraker
                     }
                 }
             }
+            
             await app.RunAsync();
+
         }
     }
 }

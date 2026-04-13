@@ -3,9 +3,11 @@ using Azure;
 using CineTraker.Data;
 using CineTraker.Services;
 using CineTraker.Shared;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
+[Authorize]
 [Route("api/[controller]")]
 [ApiController]
 public class MoviesController : ControllerBase
@@ -21,20 +23,19 @@ public class MoviesController : ControllerBase
         _streamingService = streamingService;
     }
 
-
+    [AllowAnonymous]
     [HttpGet]
     public async Task<ActionResult<IEnumerable<Movie>>> GetMovies(
         [FromQuery] string? genre = null, 
         [FromQuery] double? minRating = null,
         [FromQuery] string? platform = null,
-        [FromQuery] int skip = 0,        // <--- NUEVO
+        [FromQuery] int skip = 0,       
         [FromQuery] int take = 20 )
     {
         var query = _context.Movies
         .Include(m => m.Sources)
         .AsQueryable();
 
-        // Si viene un género, filtramos
         if (!string.IsNullOrEmpty(genre))
         {
             query = query.Where(m => m.Genre != null && m.Genre.Contains(genre));
@@ -42,7 +43,6 @@ public class MoviesController : ControllerBase
 
         if (minRating.HasValue)
         {
-            // OMDb a veces manda "N/A", lo filtramos para que no rompa el cast
             query = query.Where(m => m.ImdbRating != null &&
                                      m.ImdbRating != "N/A" &&
                                      Convert.ToDouble(m.ImdbRating) >= minRating.Value);
@@ -55,11 +55,13 @@ public class MoviesController : ControllerBase
         }
         return await query
         .OrderByDescending(m => m.ImdbRating != null && m.ImdbRating != "N/A" ? m.ImdbRating : "0")
-        .Skip(skip) // <--- SALTEA las que ya vimos
-        .Take(take) // <--- TOMA solo la tanda que sigue
+        .Skip(skip) 
+        .Take(take) 
         .ToListAsync();
     }
 
+
+    [AllowAnonymous]
     [HttpGet("{id}")]
     public async Task<ActionResult<Movie>> GetMovie(int id)
     {
@@ -83,8 +85,7 @@ public class MoviesController : ControllerBase
     [HttpPost]
     public async Task<ActionResult<Movie>> PostMovie(Movie movie)
     {
-        // Este es el guardado real. Se dispara cuando el usuario confirma su elección en el modal.
-        // Chequeamos el ImdbID para que no nos metan dos veces la misma peli.
+        
         var existe = await _context.Movies.AnyAsync(m => m.ImdbID == movie.ImdbID);
 
         if (existe)
@@ -249,7 +250,7 @@ public class MoviesController : ControllerBase
         }
     }
 
-
+    [AllowAnonymous]
     [HttpGet("smart-search/{title}")]
     public async Task<ActionResult<IEnumerable<Movie>>> SmartSearch(string title)
     {
@@ -322,7 +323,7 @@ public class MoviesController : ControllerBase
     [HttpGet("admin/update-missing-data")]
     public async Task<IActionResult> UpdateMissingData()
     {
-        // 1. Buscamos todas las películas que tengan el género o actores en NULL
+
         var peliculasIncompletas = await _context.Movies
             .Where(m => m.Genre == null || m.Actors == null || m.ImdbRating == null)
             .ToListAsync();
@@ -333,8 +334,6 @@ public class MoviesController : ControllerBase
         {
             if (string.IsNullOrEmpty(peli.ImdbID)) continue;
 
-            // 2. Usamos tu servicio para buscar la info COMPLETA por ID
-            // (Asegurate que BuscarEnOmdbPorIdAsync mapee los nuevos campos)
             var infoCompleta = await _movieService.BuscarEnOmdbPorIdAsync(peli.ImdbID);
 
             if (infoCompleta != null)

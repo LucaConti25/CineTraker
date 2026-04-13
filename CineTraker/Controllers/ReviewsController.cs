@@ -1,8 +1,10 @@
-﻿using Microsoft.AspNetCore.Mvc;
-using CineTraker.Data;
+﻿using CineTraker.Data;
 using CineTraker.Shared;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
+[Authorize]
 [Route("api/[controller]")]
 [ApiController]
 public class ReviewsController : ControllerBase
@@ -27,7 +29,7 @@ public class ReviewsController : ControllerBase
     }
 
 
-
+    [AllowAnonymous]
     [HttpGet("movie/{movieId}")]
     public async Task<ActionResult<IEnumerable<Review>>> GetReviewsByMovie(int movieId)
     {
