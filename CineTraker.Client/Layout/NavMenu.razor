@@ -1,25 +1,22 @@
-﻿<div class="sidebar-container @NavMenuCssClass">
-    <div class="top-row ps-3 navbar navbar-dark">
-        <div class="container-fluid">
-            @if (!collapseNavMenu)
-            {
-                    <a class="navbar-brand" href="">CineTraker</a>
-            }
-            <button title="Navigation menu" class="navbar-toggler" @onclick="ToggleNavMenu">
-                <span class="navbar-toggler-icon"></span>
-            </button>
-        </div>
-    </div>
+﻿@inject IJSRuntime JS
 
-    <div class="nav-scrollable">
+<div class="sidebar-container @(!collapseNavMenu ? "menu-open" : "")"
+        style="position:fixed; top:0; left:0; height:100vh; width:220px; z-index:1000; background-color:#1a1a1a; transform:@(collapseNavMenu ? "translateX(-170px)" : "translateX(0)"); transition:transform 0.3s ease; overflow:hidden; display:flex; flex-direction:column;"
+        @onmouseover="ExpandMenu"
+        @onmouseout="CollapseMenu">
+
+    <div class="nav-scrollable" style="padding-top: 1rem;">
         <nav class="flex-column">
-            <div class="nav-item px-3">
+            <div class="nav-item px-3" @onclick="ToggleNavMenu" @onclick:stopPropagation="true">
                 <NavLink class="nav-link" href="" Match="NavLinkMatch.All">
-                    <span class="bi bi-house-door-fill-nav-menu" aria-hidden="true"></span>
-                    @if (!collapseNavMenu)
-                    {
-                            <span class="nav-text ms-2">Inicio</span>
-                    }
+                    <i class="bi bi-house-door-fill nav-icon"></i>
+                    <span class="nav-text ms-2">Inicio</span>
+                </NavLink>
+            </div>
+            <div class="nav-item px-3" @onclick="ToggleNavMenu" @onclick:stopPropagation="true">
+                <NavLink class="nav-link" href="login">
+                    <i class="bi bi-person-badge-fill nav-icon"></i>
+                    <span class="nav-text ms-2">Login</span>
                 </NavLink>
             </div>
         </nav>
@@ -27,13 +24,10 @@
 </div>
 
 @code {
-    private bool collapseNavMenu = false;
-
-    // Esta clase se aplica al contenedor principal del componente
-    private string NavMenuCssClass => collapseNavMenu ? "menu-collapsed" : "menu-expanded";
-
-    private void ToggleNavMenu()
-    {
-        collapseNavMenu = !collapseNavMenu;
-    }
+    private bool collapseNavMenu = true;
+    private void ToggleNavMenu() => collapseNavMenu = !collapseNavMenu;
+    private void ExpandMenu() => collapseNavMenu = false;
+    private void CollapseMenu() => collapseNavMenu = true;
 }
+
+

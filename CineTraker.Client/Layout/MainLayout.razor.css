@@ -1,7 +1,8 @@
+/* --- ESTILOS BASE (Comunes) --- */
 .page {
     display: flex;
     flex-direction: row;
-    min-height: 100vh; /* Crucial para que el sidebar llegue al piso */
+    min-height: 100vh;
     background-color: #121212;
 }
 
@@ -11,12 +12,12 @@ main {
     background-color: #121212;
 }
 
+/* Base del sidebar sin forzar altura */
 ::deep .sidebar-container {
-    height: 100%;
-    min-height: 100vh;
+    background-color: #1a1a1a;
 }
 
-/* Hacemos que la barra superior sea invisible visualmente */
+/* La top-row vacía que borramos del layout */
 .top-row {
     background-color: #121212;
     height: 3.5rem;
@@ -28,17 +29,28 @@ article {
     padding-top: 1rem !important;
 }
 
+
+/* --- DESKTOP --- */
+@media (min-width: 641px) {
+    ::deep .sidebar-container {
+        flex-shrink: 0;
+    }
+}
+
+/* --- MOBILE --- */
 @media (max-width: 640.98px) {
     .page {
-        flex-direction: column;
+        flex-direction: row;
     }
 
-    /* Esto elimina la barra vacía que empuja todo hacia abajo */
+    main {
+        margin-left: 50px;
+    }
+
     .top-row {
         display: none !important;
     }
 
-    /* Esto quita el margen superior del contenido */
     article.content {
         padding-top: 0 !important;
     }

@@ -1,0 +1,62 @@
+﻿@page "/login"
+@using CineTraker.Shared
+@using CineTraker.Client.Services
+@inject AuthService AuthService
+@inject NavigationManager NavManager
+
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-md-4">
+            <div class="card shadow">
+                <div class="card-body">
+                    <h3 class="card-title text-center">Iniciar Sesión</h3>
+                    <hr />
+
+                    <EditForm Model="loginModel" OnValidSubmit="HandleLogin">
+                        <DataAnnotationsValidator />
+
+                        <div class="mb-3">
+                            <label class="form-label">Email</label>
+                            <InputText @bind-Value="loginModel.Email" class="form-control" placeholder="ejemplo@correo.com" />
+                            <ValidationMessage For="@(() => loginModel.Email)" />
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label">Contraseña</label>
+                            <InputText @bind-Value="loginModel.Password" type="password" class="form-control" />
+                            <ValidationMessage For="@(() => loginModel.Password)" />
+                        </div>
+
+                        @if (!string.IsNullOrEmpty(errorMessage))
+                        {
+                            <div class="alert alert-danger">@errorMessage</div>
+                        }
+
+                        <button type="submit" class="btn btn-primary w-100">Entrar</button>
+                    </EditForm>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    private Login loginModel = new Login();
+    private string? errorMessage;
+
+    private async Task HandleLogin()
+    {
+        errorMessage = null;
+        var success = await AuthService.Login(loginModel);
+
+        if (success)
+        {
+            // Si el login es correcto, lo mandamos al home
+            NavManager.NavigateTo("/");
+        }
+        else
+        {
+            errorMessage = "Email o contraseña incorrectos.";
+        }
+    }
+}

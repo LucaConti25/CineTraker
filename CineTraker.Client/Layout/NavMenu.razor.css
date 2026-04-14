@@ -1,41 +1,80 @@
-/* Aseguramos que el texto 'Inicio' sea blanco y no azul link */
+/* === COMPARTIDO === */
+.sidebar-container {
+    background-color: #1a1a1a;
+    transition: width 0.3s ease;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+}
+
 .nav-link {
     color: white !important;
     display: flex;
     align-items: center;
-    padding: 0.5rem 1rem;
-    text-decoration: none;
+    white-space: nowrap;
 }
 
-    .nav-link:hover {
-        background-color: rgba(255,255,255,0.1);
-        border-radius: 4px;
+.nav-icon {
+    font-size: 1.1rem;
+    min-width: 25px;
+    text-align: center;
+    flex-shrink: 0;
+}
+
+.nav-text {
+    opacity: 0;
+    transition: opacity 0.2s ease;
+    pointer-events: none;
+}
+
+.menu-open .nav-text {
+    opacity: 1;
+    pointer-events: auto;
+}
+
+/* === DESKTOP: hover expande === */
+@media (min-width: 641px) {
+    .sidebar-container {
+        width: 55px;
+        min-height: 100vh;
     }
 
-.bi {
-    color: white !important;
-    margin-right: 10px;
+    .menu-open {
+        width: 220px;
+    }
+
+    .top-row .container-fluid {
+        justify-content: center;
+    }
 }
-/* Forzamos el color blanco en los iconos SVG */
-::deep .bi-house-door-fill-nav-menu {
-    filter: brightness(0) invert(1); /* Esto hace que cualquier icono sea blanco puro */
+
+/* === MOBILE: slide lateral con click === */
+@media (max-width: 640.98px) {
+    .sidebar-container {
+        position: fixed;
+        top: 0;
+        left: 0;
+        height: 100vh;
+        width: 220px;
+        z-index: 1000;
+        transform: translateX(-170px); /* 220 - 50 = 170, asoman 50px */
+        transition: transform 0.3s ease;
+    }
+
+    .menu-open {
+        transform: translateX(0);
+    }
+
+    .nav-text {
+        opacity: 1;
+    }
 }
 
 @media (max-width: 640.98px) {
-    /* 1. Achicamos la barra principal */
-    .top-row.navbar {
-        padding-top: 0.2rem !important;
-        padding-bottom: 0.2rem !important;
-    }
-    .nav-scrollable {
-        display: none !important;
-    }
-    .sidebar-container {
-        min-height: auto !important;
-        height: auto !important;
-    }
-
-    .navbar-brand {
-        font-size: 1.1rem !important; /* Texto un poquito más chico */
+    .top-row {
+        display: flex !important;
+        background-color: #1a1a1a;
+        height: 3.5rem;
+        align-items: center;
     }
 }
