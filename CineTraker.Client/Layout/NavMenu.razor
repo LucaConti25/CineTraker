@@ -1,26 +1,23 @@
 ﻿@inject IJSRuntime JS
 
-<div class="sidebar-container @(!collapseNavMenu ? "menu-open" : "")"
-        style="position:fixed; top:0; left:0; height:100vh; width:220px; z-index:1000; background-color:#1a1a1a; transform:@(collapseNavMenu ? "translateX(-170px)" : "translateX(0)"); transition:transform 0.3s ease; overflow:hidden; display:flex; flex-direction:column;"
-        @onmouseover="ExpandMenu"
-        @onmouseout="CollapseMenu">
+<div class="menu-pill-container @(collapseNavMenu ? "closed" : "open")"
+     @onmouseover="ExpandMenu"
+     @onmouseout="CollapseMenu">
 
-    <div class="nav-scrollable" style="padding-top: 1rem;">
-        <nav class="flex-column">
-            <div class="nav-item px-3" @onclick="ToggleNavMenu" @onclick:stopPropagation="true">
-                <NavLink class="nav-link" href="" Match="NavLinkMatch.All">
-                    <i class="bi bi-house-door-fill nav-icon"></i>
-                    <span class="nav-text ms-2">Inicio</span>
-                </NavLink>
-            </div>
-            <div class="nav-item px-3" @onclick="ToggleNavMenu" @onclick:stopPropagation="true">
-                <NavLink class="nav-link" href="login">
-                    <i class="bi bi-person-badge-fill nav-icon"></i>
-                    <span class="nav-text ms-2">Login</span>
-                </NavLink>
-            </div>
-        </nav>
+    <div class="menu-options">
+        <NavLink class="nav-btn circular-btn" href="login" title="Login">
+            <i class="bi bi-person-badge-fill"></i>
+        </NavLink>
+
+        <NavLink class="nav-btn circular-btn" href="" Match="NavLinkMatch.All" title="Inicio">
+            <i class="bi bi-house-door-fill"></i>
+        </NavLink>
     </div>
+
+    <button class="main-trigger" @onclick="ToggleNavMenu">
+        <i class="bi bi-list"></i>
+    </button>
+
 </div>
 
 @code {
@@ -29,5 +26,3 @@
     private void ExpandMenu() => collapseNavMenu = false;
     private void CollapseMenu() => collapseNavMenu = true;
 }
-
-

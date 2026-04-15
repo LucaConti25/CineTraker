@@ -1,57 +1,40 @@
-/* --- ESTILOS BASE (Comunes) --- */
+/* --- ESTILOS BASE (Todo a pantalla completa) --- */
 .page {
-    display: flex;
-    flex-direction: row;
+    display: block; /* Quitamos el flex para que el contenido fluya libre */
     min-height: 100vh;
     background-color: #121212;
+    position: relative;
 }
 
 main {
-    flex: 1;
-    min-width: 0;
+    width: 100%;
     background-color: #121212;
 }
 
-/* Base del sidebar sin forzar altura */
+/* El sidebar ahora no ocupa espacio físico en el layout */
 ::deep .sidebar-container {
-    background-color: #1a1a1a;
+    position: fixed;
+    z-index: 2000;
 }
 
-/* La top-row vacía que borramos del layout */
+/* Eliminamos barras superiores que ocupen lugar */
 .top-row {
-    background-color: #121212;
-    height: 3.5rem;
-    display: flex;
-    align-items: center;
+    display: none !important;
 }
 
 article {
-    padding-top: 1rem !important;
+    padding: 0 !important;
 }
 
-
-/* --- DESKTOP --- */
-@media (min-width: 641px) {
-    ::deep .sidebar-container {
-        flex-shrink: 0;
-    }
-}
-
-/* --- MOBILE --- */
+/* --- RESPONSIVE (Limpieza de márgenes) --- */
 @media (max-width: 640.98px) {
-    .page {
-        flex-direction: row;
-    }
-
     main {
-        margin-left: 50px;
+        margin-left: 0; /* Catálogo al 100% de ancho */
     }
+}
 
-    .top-row {
-        display: none !important;
-    }
-
-    article.content {
-        padding-top: 0 !important;
+@media (min-width: 641px) {
+    main {
+        margin-left: 0; /* Catálogo al 100% de ancho en PC también */
     }
 }
