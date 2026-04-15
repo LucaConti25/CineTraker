@@ -1,6 +1,7 @@
-﻿using System.Net.Http.Json;
-using Blazored.LocalStorage;
+﻿using Blazored.LocalStorage;
 using CineTraker.Shared; // Asegurate que acá esté tu clase Login
+using Microsoft.AspNetCore.Components.Authorization;
+using System.Net.Http.Json;
 
 namespace CineTraker.Client.Services
 {
@@ -8,11 +9,13 @@ namespace CineTraker.Client.Services
     {
         private readonly HttpClient _httpClient;
         private readonly ILocalStorageService _localStorage;
+        private readonly AuthenticationStateProvider _authStateProvider;
 
-        public AuthService(HttpClient httpClient, ILocalStorageService localStorage)
+        public AuthService(HttpClient httpClient, ILocalStorageService localStorage, AuthenticationStateProvider authStateProvider)
         {
             _httpClient = httpClient;
             _localStorage = localStorage;
+            _authStateProvider = authStateProvider;
         }
 
         public async Task<bool> Login(Login loginModel)
@@ -24,8 +27,16 @@ namespace CineTraker.Client.Services
                 var result = await response.Content.ReadFromJsonAsync<LoginResult>();
                 if (result != null)
                 {
-                    // Guardamos el token para que el JwtHandler lo use después
+                    // 1. Guardamos el token en el storage para persistencia (F5)
                     await _localStorage.SetItemAsync("authToken", result.Token);
+
+                    // 2. Le pasamos el token DIRECTAMENTE al Provider 
+                    // Esto hace que el menú cambie sin lag y sin trabar el navegador
+                    if (_authStateProvider is JwtAuthStateProvider jwtProvider)
+                    {
+                        jwtProvider.NotifyAuthChanged(result.Token);
+                    }
+
                     return true;
                 }
             }
@@ -35,6 +46,12 @@ namespace CineTraker.Client.Services
         public async Task Logout()
         {
             await _localStorage.RemoveItemAsync("authToken");
+
+            // Avisamos que salimos (sin pasarle nada)
+            if (_authStateProvider is JwtAuthStateProvider jwtProvider)
+            {
+                jwtProvider.NotifyAuthChanged();
+            }
         }
     }
 

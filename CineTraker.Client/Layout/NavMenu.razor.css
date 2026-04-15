@@ -5,27 +5,29 @@
     z-index: 3000;
     background-color: #1a1a1a;
     border: 2px solid #0078d4;
-    width: 60px; /* Ancho fijo para mantener el círculo */
-    border-radius: 50px; /* Radio alto para que siempre sea curvo */
-
+    width: 60px;
+    border-radius: 50px;
     display: flex;
     flex-direction: column;
     align-items: center;
-    justify-content: flex-end; /* El botón de abajo manda */
+    justify-content: flex-end;
     padding: 5px 0;
     box-shadow: 0 4px 20px rgba(0,0,0,0.8);
     transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
     overflow: hidden;
 }
 
-    /* ESTADO CERRADO: Se vuelve un círculo perfecto */
+    /* ESTADO CERRADO */
     .menu-pill-container.closed {
-        height: 60px; /* Altura igual al ancho + padding */
+        height: 60px;
     }
 
-    /* ESTADO ABIERTO: Crece hacia arriba */
+    /* ESTADO ABIERTO: Altura adaptable */
     .menu-pill-container.open {
-        height: 180px; /* Ajustá esto según necesites más espacio */
+        /* Permitimos que crezca hasta 400px, pero solo ocupará lo que necesite */
+        height: auto;
+        max-height: 400px;
+        padding: 15px 0;
     }
 
 /* Botones internos */
@@ -41,14 +43,13 @@
     align-items: center;
     cursor: pointer;
     transition: all 0.3s ease;
-    flex-shrink: 0; /* Para que no se deformen al cerrar */
+    flex-shrink: 0;
 }
 
     .main-trigger i, .circular-btn i {
         font-size: 1.6rem;
     }
 
-/* Efecto al abrir: el icono de las rayas puede rotar o cambiar de color */
 .open .main-trigger {
     color: #0078d4;
     transform: rotate(90deg);
@@ -57,17 +58,25 @@
 .menu-options {
     display: flex;
     flex-direction: column;
-    gap: 10px;
-    margin-bottom: 10px;
+    align-items: center;
+    gap: 12px; /* Reducimos un poco el gap para que sea más compacto */
+    margin-bottom: 5px; /* Espacio antes del botón gatillo */
+    /* Manejo de visibilidad */
+    max-height: 0;
     opacity: 0;
-    transition: opacity 0.3s ease;
+    pointer-events: none;
+    transition: all 0.3s ease;
 }
 
 .open .menu-options {
+    max-height: 350px; /* Suficiente para las opciones */
     opacity: 1;
+    pointer-events: auto;
+    margin-bottom: 12px;
 }
 
 .circular-btn:hover {
     background-color: rgba(0, 120, 212, 0.2);
     transform: scale(1.1);
 }
+
