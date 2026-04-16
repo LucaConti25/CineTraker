@@ -38,6 +38,58 @@
             };
         };
     </script>
+    <script src="https://unpkg.com/vis-network/standalone/umd/vis-network.min.js"></script>
+    <script>
+        window.inicializarGrafo = (data) => {
+            console.log("Datos recibidos:", data); // Mirá esto en la consola F12
+            const nodosData = data.nodos || data.Nodos;
+            const aristasData = data.aristas || data.Aristas;
+            const container = document.getElementById('graph-container');
+            if (!container) return; // Seguridad por si el div no está listo
+
+            const nodes = new vis.DataSet(data.nodos.map(n => ({
+                id: n.id,
+                label: n.titulo,
+                shape: 'circularImage',
+                image: n.posterUrl,
+                size: n.grupo === "Central" ? 40 : 25,
+                color: {
+                    border: n.grupo === "Central" ? "#0078d4" : "#28a745",
+                    background: "#1a1a1a"
+                },
+                font: { color: '#ffffff', size: 14, strokeWidth: 2, strokeColor: '#000000' }
+            })));
+
+            const edges = new vis.DataSet(data.aristas.map(e => ({
+                from: e.sourceId,
+                to: e.targetId,
+                label: e.relacion,
+                arrows: 'to',
+                color: { color: '#0078d4' },
+                font: { align: 'middle', color: '#ffffff', size: 10 }
+            })));
+
+            const options = {
+                physics: {
+                    enabled: true,
+                    barnesHut: {
+                        gravitationalConstant: -3000,
+                        springLength: 150
+                    }
+                },
+                nodes: {
+                    borderWidth: 3,
+                    shadow: true
+                },
+                edges: {
+                    width: 2,
+                    shadow: true
+                }
+            };
+
+            new vis.Network(container, { nodes, edges }, options);
+        };
+    </script>
 </body>
 
 </html>

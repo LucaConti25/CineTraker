@@ -2,9 +2,11 @@
 using CineTraker.Shared.Models;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-
+using Microsoft.AspNetCore.Authorization;
 namespace CineTraker.Controllers
 {
+    [ApiController] 
+    [Route("api/[controller]")]
     public class RecommendationController: ControllerBase
     {
 
@@ -17,6 +19,7 @@ namespace CineTraker.Controllers
 
 
         [HttpGet("grafo/{movieId}")]
+        [AllowAnonymous]
         public async Task<ActionResult<MovieGraph>> GetGrafoRecomendacion(int movieId)
         {
             var movieBase = await _context.Movies.FindAsync(movieId);

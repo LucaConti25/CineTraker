@@ -1,0 +1,32 @@
+﻿@page "/mapa/{MovieId:int}"
+@using CineTraker.Shared.Models
+@inject HttpClient Http
+@inject IJSRuntime JS
+
+<div class="container-fluid bg-dark text-white p-4" style="height: 90vh;">
+    <h3>Mapa de Recomendaciones</h3>
+
+    <div id="graph-container" style="width: 100%; height: 80%; border: 1px solid #0078d4; border-radius: 15px;">
+        @* Aquí se dibuja el grafo *@
+    </div>
+</div>
+
+@code {
+    [Parameter] public int MovieId { get; set; }
+    private MovieGraph? grafo;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            // Traemos los datos de la API que acabás de probar
+            grafo = await Http.GetFromJsonAsync<MovieGraph>($"/api/recommendation/grafo/{MovieId}");
+
+            if (grafo != null)
+            {
+                // Llamamos a la función de JavaScript
+                await JS.InvokeVoidAsync("inicializarGrafo", grafo);
+            }
+        }
+    }
+}
