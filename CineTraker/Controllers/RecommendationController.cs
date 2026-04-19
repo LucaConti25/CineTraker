@@ -7,6 +7,7 @@ namespace CineTraker.Controllers
 {
     [ApiController] 
     [Route("api/[controller]")]
+    [Authorize]
     public class RecommendationController: ControllerBase
     {
 
@@ -20,8 +21,11 @@ namespace CineTraker.Controllers
 
         [HttpGet("grafo/{movieId}")]
         [AllowAnonymous]
-        public async Task<ActionResult<MovieGraph>> GetGrafoRecomendacion(int movieId)
+        public async Task<ActionResult<MovieGraph>> GetGrafoRecomendacion(int movieId, [FromQuery] string excluidos = "")
         {
+            var excludedIds = excluidos.Split(',', StringSplitOptions.RemoveEmptyEntries)
+                               .Select(int.Parse).ToList();
+            excludedIds.Add(movieId); 
             var movieBase = await _context.Movies.FindAsync(movieId);
             if (movieBase == null) return NotFound();
 
@@ -38,9 +42,9 @@ namespace CineTraker.Controllers
 
             // --- RECOMENDACIÓN POR DIRECTOR ---
             var byDirector = await _context.Movies
-                .Where(m => m.Director == movieBase.Director && m.Id != movieId)
-                .Take(4)
-                .ToListAsync();
+            .Where(m => m.Director == movieBase.Director && !excludedIds.Contains(m.Id))
+            .Take(1) // Bajamos a 3 para que sea más limpio
+            .ToListAsync();
 
             foreach (var m in byDirector)
             {
@@ -63,11 +67,10 @@ namespace CineTraker.Controllers
             var primerGenero = movieBase.Genre.Split(',')[0].Trim();
 
             var byGenre = await _context.Movies
-                .Where(m => m.Genre.Contains(primerGenero) && m.Id != movieId)
-                // Evitamos duplicar las que ya trajimos por Director
-                .Where(m => !byDirector.Select(d => d.Id).Contains(m.Id))
-                .Take(4)
-                .ToListAsync();
+            .Where(m => m.Genre.Contains(primerGenero) && !excludedIds.Contains(m.Id))
+            .Where(m => !byDirector.Select(d => d.Id).Contains(m.Id))
+            .Take(1)
+            .ToListAsync();
 
             foreach (var m in byGenre)
             {

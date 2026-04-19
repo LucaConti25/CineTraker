@@ -2,6 +2,7 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore; 
 using Microsoft.AspNetCore.Identity;
+using CineTraker.Shared.Models;
 
 namespace CineTraker.Data
 {
@@ -12,6 +13,8 @@ namespace CineTraker.Data
         public DbSet<Movie> Movies { get; set; }
         public DbSet<Review> Reviews { get; set; }
         public DbSet<StreamingSource> StreamingSources { get; set; }
+
+        public DbSet<UserMap> UserMaps { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {

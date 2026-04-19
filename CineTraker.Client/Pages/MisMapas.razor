@@ -1,0 +1,82 @@
+﻿@page "/mis-mapas"
+@using CineTraker.Shared.Models
+@inject HttpClient Http
+@inject NavigationManager Nav
+@inject AuthenticationStateProvider AuthStateProvider
+@using Microsoft.AspNetCore.Components.Authorization
+@using Microsoft.AspNetCore.Authorization
+@attribute [Authorize]
+
+<div class="container mt-5 text-white">
+    <h2 class="mb-4">Mis Expediciones</h2>
+
+    @if (mapas == null)
+    {
+            <div class="spinner-border text-primary" role="status"></div>
+    }
+    else if (!mapas.Any())
+    {
+            <p>Aún no has comenzado ningún mapa. ¡Buscá una película y empezá a explorar!</p>
+    }
+    else
+    {
+            <div class="row">
+            @foreach (var mapa in mapas)
+            {
+                        <div class="col-md-4 mb-4">
+                            <div class="card bg-secondary text-white shadow-sm h-100">
+                                <div class="card-body">
+                                    <h5 class="card-title text-info">@mapa.Name</h5>
+                                    <p class="card-text small text-light">
+                                        <i class="bi bi-calendar"></i> Última actualización: @mapa.CreatedDate.ToShortDateString()
+                                    </p>
+                                    <div class="progress mb-3" style="height: 10px;">
+                                @* Aquí calculamos el progreso basado en tus 14 películas meta *@
+                                        <div class="progress-bar bg-success" role="progressbar" 
+                                             style="width: @(mapa.TotalMovies * 100 / 14)%"></div>
+                                    </div>
+                                    <p class="small">@mapa.TotalMovies de 14 películas descubiertas</p>
+                                </div>
+                                <div class="card-footer bg-transparent border-top-0">
+                                    <button class="btn btn-primary w-100" @onclick="() => Continuar(mapa.SeedMovieId)">
+                                        Continuar Expedición
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+            }
+            </div>
+    }
+</div>
+
+@code {
+    private List<UserMap>? mapas;
+
+    protected override async Task OnInitializedAsync()
+    {
+        // --- PLAN B: Verificación manual de seguridad ---
+        var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+        var user = authState.User;
+
+        if (user.Identity == null || !user.Identity.IsAuthenticated)
+        {
+            Nav.NavigateTo("login?returnUrl=mis-mapas");
+            return;
+        }
+
+        try
+        {
+            mapas = await Http.GetFromJsonAsync<List<UserMap>>("/api/maps/my-maps");
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error al cargar mapas: {ex.Message}");
+            mapas = new List<UserMap>(); 
+        }
+    }
+
+    private void Continuar(int seedId)
+    {
+        Nav.NavigateTo($"/mapa/{seedId}");
+    }
+}

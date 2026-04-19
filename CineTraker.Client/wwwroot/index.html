@@ -28,7 +28,9 @@
         <a href="" class="reload">Reload</a>
         <a class="dismiss">🗙</a>
     </div>
+
     <script src="_framework/blazor.webassembly.js"></script>
+
     <script>
         window.inicializarScrollInfinito = (dotNetHelper) => {
             window.onscroll = () => {
@@ -38,56 +40,155 @@
             };
         };
     </script>
+
     <script src="https://unpkg.com/vis-network/standalone/umd/vis-network.min.js"></script>
+
     <script>
-        window.inicializarGrafo = (data) => {
-            console.log("Datos recibidos:", data); // Mirá esto en la consola F12
-            const nodosData = data.nodos || data.Nodos;
-            const aristasData = data.aristas || data.Aristas;
+        let network = null;
+        let nodes = null;
+        let edges = null;
+        let dotNetReference = null;
+
+        window.inicializarGrafo = (data, dotNetHelper) => {
+            dotNetReference = dotNetHelper;
             const container = document.getElementById('graph-container');
-            if (!container) return; // Seguridad por si el div no está listo
 
-            const nodes = new vis.DataSet(data.nodos.map(n => ({
-                id: n.id,
-                label: n.titulo,
-                shape: 'circularImage',
-                image: n.posterUrl,
-                size: n.grupo === "Central" ? 40 : 25,
-                color: {
-                    border: n.grupo === "Central" ? "#0078d4" : "#28a745",
-                    background: "#1a1a1a"
-                },
-                font: { color: '#ffffff', size: 14, strokeWidth: 2, strokeColor: '#000000' }
-            })));
+            if (!container) return;
 
-            const edges = new vis.DataSet(data.aristas.map(e => ({
-                from: e.sourceId,
-                to: e.targetId,
-                label: e.relacion,
-                arrows: 'to',
-                color: { color: '#0078d4' },
-                font: { align: 'middle', color: '#ffffff', size: 10 }
-            })));
+            if (network !== null) {
+                network.destroy();
+                network = null;
+            }
+
+            const nodosRaw = data.nodos || data.Nodos;
+            const aristasRaw = data.aristas || data.Aristas;
+
+            nodes = new vis.DataSet(nodosRaw.map(n => transformarNodo(n)));
+            edges = new vis.DataSet(aristasRaw.map(e => transformarArista(e)));
 
             const options = {
                 physics: {
                     enabled: true,
-                    barnesHut: {
-                        gravitationalConstant: -3000,
-                        springLength: 150
-                    }
+                    barnesHut: { gravitationalConstant: -3000, springLength: 150 }
                 },
-                nodes: {
-                    borderWidth: 3,
-                    shadow: true
-                },
-                edges: {
-                    width: 2,
-                    shadow: true
-                }
+                nodes: { borderWidth: 3, shadow: true },
+                edges: { width: 2, shadow: true, arrows: 'to' }
             };
 
-            new vis.Network(container, { nodes, edges }, options);
+            network = new vis.Network(container, { nodes, edges }, options);
+
+            // Evento de clic para Blazor
+            network.on("click", function (params) {
+                if (params.nodes.length > 0) {
+                    const nodeId = params.nodes[0];
+                    dotNetReference.invokeMethodAsync('SeleccionarPeliculaDesdeMapa', nodeId);
+                }
+            });
+        };
+
+        function transformarNodo(n) {
+            const id = n.id || n.Id;
+            const titulo = n.titulo || n.Titulo;
+            const posterUrl = n.posterUrl || n.PosterUrl;
+            const grupo = n.grupo || n.Grupo;
+            const esVisto = n.isWatched || n.IsWatched;
+
+            return {
+                id: id,
+                label: titulo,
+                shape: 'circularImage',
+                image: posterUrl,
+                size: grupo === "Central" ? 40 : 25,
+                color: {
+                    border: esVisto ? "#6c757d" : (grupo === "Central" ? "#0078d4" : "#28a745"),
+                    background: "#1a1a1a"
+                },
+                imagePadding: 0,
+                shapeProperties: { useImageSize: false },
+                chosen: true,
+                font: { color: '#ffffff', strokeWidth: 2, strokeColor: '#000000' },
+                opacity: esVisto ? 0.6 : 1
+            };
+        }
+
+        function transformarArista(e) {
+            const source = e.sourceId || e.SourceId;
+            const target = e.targetId || e.TargetId;
+            const relacion = e.relacion || e.Relacion;
+            return { from: source, to: target, label: relacion };
+        }
+
+        window.inyectarNodos = (nuevoGrafo) => {
+            const nuevosNodosRaw = nuevoGrafo.nodos || nuevoGrafo.Nodos;
+            const nuevasAristasRaw = nuevoGrafo.aristas || nuevoGrafo.Aristas;
+
+            nuevosNodosRaw.forEach(n => {
+                const id = n.id || n.Id;
+                if (!nodes.get(id)) {
+                    nodes.add(transformarNodo(n));
+                }
+            });
+
+            nuevasAristasRaw.forEach(e => {
+                const source = e.sourceId || e.SourceId;
+                const target = e.targetId || e.TargetId;
+                const exists = edges.get({
+                    filter: (item) => item.from === source && item.to === target
+                });
+                if (exists.length === 0) {
+                    edges.add(transformarArista(e));
+                }
+            });
+        };
+
+        window.obtenerSnapshotGrafo = () => {
+            if (!network || !nodes || !edges) return "";
+
+            const posiciones = network.getPositions();
+            const nodosSnapshot = nodes.get().map(n => {
+                return {
+                    ...n,
+                    x: posiciones[n.id] ? posiciones[n.id].x : 0,
+                    y: posiciones[n.id] ? posiciones[n.id].y : 0
+                };
+            });
+
+            const aristasSnapshot = edges.get();
+            return JSON.stringify({ nodos: nodosSnapshot, aristas: aristasSnapshot });
+        };
+
+        window.obtenerIdsNodos = () => {
+            if (!nodes) return [];
+            return nodes.getIds(); // Devuelve un array de los IDs de todos los nodos actuales
+        };
+
+        window.cargarMapaDesdeJson = (jsonString, dotNetHelper) => {
+            dotNetReference = dotNetHelper;
+            const container = document.getElementById('graph-container');
+            if (!container || !jsonString) return;
+
+            const data = JSON.parse(jsonString);
+
+            // Reconstruimos los DataSets con la data que viene de la DB
+            nodes = new vis.DataSet(data.nodos);
+            edges = new vis.DataSet(data.aristas);
+
+            const options = {
+                // Desactivamos la física inicial para que respeten las posiciones x, y guardadas
+                physics: { enabled: false },
+                nodes: { borderWidth: 3, shadow: true },
+                edges: { width: 2, shadow: true, arrows: 'to' }
+            };
+
+            network = new vis.Network(container, { nodes, edges }, options);
+
+            // Reactivamos el evento de clic para poder seguir expandiendo
+            network.on("click", function (params) {
+                if (params.nodes.length > 0) {
+                    const nodeId = params.nodes[0];
+                    dotNetReference.invokeMethodAsync('SeleccionarPeliculaDesdeMapa', nodeId);
+                }
+            });
         };
     </script>
 </body>

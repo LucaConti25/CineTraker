@@ -1,32 +1,189 @@
 ﻿@page "/mapa/{MovieId:int}"
+@using CineTraker.Shared
 @using CineTraker.Shared.Models
 @inject HttpClient Http
 @inject IJSRuntime JS
+@inject AuthenticationStateProvider AuthStateProvider
+@using Microsoft.AspNetCore.Components.Authorization
+@inject NavigationManager Nav
 
-<div class="container-fluid bg-dark text-white p-4" style="height: 90vh;">
-    <h3>Mapa de Recomendaciones</h3>
 
-    <div id="graph-container" style="width: 100%; height: 80%; border: 1px solid #0078d4; border-radius: 15px;">
-        @* Aquí se dibuja el grafo *@
-    </div>
-</div>
+
+<AuthorizeView>
+    <Authorized>
+        <div class="container-fluid bg-dark text-white p-4" style="height: 90vh; position: relative;">
+            <h3>Mapa de Recomendaciones</h3>
+
+            @if (estaGuardando)
+            {
+                <span class="badge bg-success ms-3 animate-pulse">
+                    <i class="bi bi-cloud-check"></i> Guardando...
+                </span>
+            }
+
+            <div id="graph-container" style="width: 100%; height: 80%; border: 1px solid #0078d4; border-radius: 15px;"></div>
+
+            @if (mostrarModal)
+            {
+                <div class="modal-overlay">
+                    <div class="modal-content bg-secondary p-3 rounded shadow">
+                        <h4>Puntuar: @peliculaSeleccionada?.Title</h4>
+                        <div class="stars my-3">
+                            @for (int i = 1; i <= 5; i++)
+                            {
+                                int starIndex = i;
+                                <i class="bi @(puntuacionTemp >= i ? "bi-star-fill" : "bi-star")" 
+                                style="cursor:pointer; color: gold; font-size: 1.5rem;"
+                                @onclick="() => puntuacionTemp = starIndex"></i>
+                            }
+                        </div>
+                        <div class="d-flex justify-content-between">
+                            <button class="btn btn-danger" @onclick="() => mostrarModal = false">Cancelar</button>
+                            <button class="btn btn-success" @onclick="GuardarYExpandir">Guardar y Explorar</button>
+                        </div>
+                    </div>
+                </div>
+            }
+        </div>
+    </Authorized>
+    <NotAuthorized>
+        @* Lo que ve el usuario si intenta entrar sin loguearse *@
+        <div class="container mt-5 text-center text-white">
+            <div class="card bg-secondary p-5 shadow">
+                <i class="bi bi-lock-fill" style="font-size: 4rem; color: #ffc107;"></i>
+                <h2 class="mt-3">Acceso Restringido</h2>
+                <p>Debes iniciar sesión para explorar y guardar tus mapas cinematográficos.</p>
+                <div class="mt-4">
+                    <a href="login?returnUrl=mapa/@MovieId" class="btn btn-primary btn-lg">
+                        <i class="bi bi-box-arrow-in-right"></i> Iniciar Sesión
+                    </a>
+                </div>
+            </div>
+        </div>
+    </NotAuthorized>
+</AuthorizeView>
 
 @code {
     [Parameter] public int MovieId { get; set; }
-    private MovieGraph? grafo;
+    private bool estaGuardando = false;
+    private bool mostrarModal = false;
+    private int puntuacionTemp = 0;
+    private Movie? peliculaSeleccionada;
+    private DotNetObjectReference<Mapa>? objRef;
+
+    // --- CAMBIO CLAVE: Guardamos el ID del mapa actual ---
+    private int mapaActualId = 0;
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
         if (firstRender)
         {
-            // Traemos los datos de la API que acabás de probar
-            grafo = await Http.GetFromJsonAsync<MovieGraph>($"/api/recommendation/grafo/{MovieId}");
+            objRef = DotNetObjectReference.Create(this);
 
-            if (grafo != null)
+            var response = await Http.GetAsync($"/api/maps/load/{MovieId}");
+
+            if (response.IsSuccessStatusCode)
             {
-                // Llamamos a la función de JavaScript
-                await JS.InvokeVoidAsync("inicializarGrafo", grafo);
+                var mapaGuardado = await response.Content.ReadFromJsonAsync<UserMap>();
+                if (mapaGuardado != null)
+                {
+                    mapaActualId = mapaGuardado.Id;
+                    await JS.InvokeVoidAsync("cargarMapaDesdeJson", mapaGuardado.GraphJson, objRef);
+                    return;
+                }
             }
+
+            var grafoInicial = await Http.GetFromJsonAsync<MovieGraph>($"/api/recommendation/grafo/{MovieId}");
+            await JS.InvokeVoidAsync("inicializarGrafo", grafoInicial, objRef);
+        }
+    }
+
+    [JSInvokable]
+    public async Task SeleccionarPeliculaDesdeMapa(int id)
+    {
+        peliculaSeleccionada = await Http.GetFromJsonAsync<Movie>($"/api/movies/{id}");
+        puntuacionTemp = 0;
+        mostrarModal = true;
+        StateHasChanged();
+    }
+
+    private async Task GuardarYExpandir()
+    {
+        if (peliculaSeleccionada == null) return;
+
+        if (puntuacionTemp > 1)
+        {
+            var idsEnMapa = await JS.InvokeAsync<List<int>>("obtenerIdsNodos");
+            string excluidosQuery = string.Join(",", idsEnMapa);
+
+            var nuevoGrafo = await Http.GetFromJsonAsync<MovieGraph>(
+                $"/api/recommendation/grafo/{peliculaSeleccionada.Id}?excluidos={excluidosQuery}");
+
+            if (nuevoGrafo != null)
+            {
+                await JS.InvokeVoidAsync("inyectarNodos", nuevoGrafo);
+            }
+        }
+
+        // Llamamos al guardado después de expandir
+        await AutoguardarMapa();
+        mostrarModal = false;
+        StateHasChanged();
+    }
+
+    private async Task AutoguardarMapa()
+    {
+        estaGuardando = true;
+        StateHasChanged();
+
+        var grafoJson = await JS.InvokeAsync<string>("obtenerSnapshotGrafo");
+
+        var mapaData = new UserMap
+            {
+                Id = mapaActualId, 
+                SeedMovieId = MovieId, 
+                Name = $"Mapa de exploración",
+                GraphJson = grafoJson,
+                UserId = ""
+            };
+
+        var response = await Http.PostAsJsonAsync("/api/maps/save", mapaData);
+
+        if (response.IsSuccessStatusCode)
+        {
+            var resultado = await response.Content.ReadFromJsonAsync<UserMap>();
+            if (mapaActualId == 0 && resultado != null)
+            {
+                mapaActualId = resultado.Id;
+            }
+            Console.WriteLine($"Mapa guardado (ID: {mapaActualId})");
+        }
+
+        await Task.Delay(500);
+        estaGuardando = false;
+        StateHasChanged();
+
+    }
+
+    public void Dispose() => objRef?.Dispose();
+
+    protected override async Task OnInitializedAsync()
+    {
+        var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+        var user = authState.User;
+
+        if (user.Identity == null || !user.Identity.IsAuthenticated)
+        {
+            // Si no está logueado, lo mandamos al login y recordamos a qué película quería entrar
+            Nav.NavigateTo($"login?returnUrl=mapa/{MovieId}");
         }
     }
 }
+
+<style>
+    .modal-overlay {
+        position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+        background: rgba(0,0,0,0.7); display: flex; align-items: center; justify-content: center; z-index: 1000;
+    }
+    .modal-content { width: 300px; text-align: center; border: 1px solid #0078d4; }
+</style>
