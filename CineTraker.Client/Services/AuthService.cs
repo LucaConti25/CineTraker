@@ -53,6 +53,20 @@ namespace CineTraker.Client.Services
                 jwtProvider.NotifyAuthChanged();
             }
         }
+
+        public async Task<RegisterResult> Register(RegisterRequest registerModel)
+        {
+            var response = await _httpClient.PostAsJsonAsync("api/account/register", registerModel);
+
+            if (response.IsSuccessStatusCode)
+            {
+                return new RegisterResult { Succeeded = true };
+            }
+
+            // Si falla (ej: usuario duplicado), leemos los errores del backend
+            var result = await response.Content.ReadFromJsonAsync<RegisterResult>();
+            return result ?? new RegisterResult { Succeeded = false, Errors = new List<string> { "Error desconocido" } };
+        }
     }
 
     public class LoginResult
@@ -60,4 +74,7 @@ namespace CineTraker.Client.Services
         public string Token { get; set; } = string.Empty;
         public string UserId { get; set; } = string.Empty;
     }
+
+
+
 }

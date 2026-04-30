@@ -1,6 +1,7 @@
-﻿using Microsoft.AspNetCore.Identity;
+﻿using CineTraker.Shared;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
-using CineTraker.Shared;
 using Microsoft.IdentityModel.Tokens;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
@@ -44,7 +45,26 @@ namespace CineTraker.Server.Controllers
             return Unauthorized("Contraseña incorrecta.");
         }
 
+        [HttpPost("register")]
+        [AllowAnonymous]
+        public async Task<IActionResult> Register([FromBody] RegisterRequest model)
+        {
+            var user = new IdentityUser { UserName = model.Email, Email = model.Email };
+            var result = await _userManager.CreateAsync(user, model.Password);
 
+            if (result.Succeeded)
+            {
+                // Opcional: Asignar rol de "User" por defecto
+                await _userManager.AddToRoleAsync(user, "User");
+                return Ok(new RegisterResult { Succeeded = true });
+            }
+
+            return BadRequest(new RegisterResult
+            {
+                Succeeded = false,
+                Errors = result.Errors.Select(e => e.Description).ToList()
+            });
+        }
 
         private async Task<string> GenerateJwtToken(IdentityUser user)
         {

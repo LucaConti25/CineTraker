@@ -72,6 +72,7 @@ namespace CineTraker
                 };
             });
 
+
             builder.Services.AddHttpClient<MovieService>();
             builder.Services.AddScoped<StreamingService>();
 

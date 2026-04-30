@@ -1,13 +1,15 @@
 ﻿@page "/login"
 @using CineTraker.Shared
 @using CineTraker.Client.Services
+@using Microsoft.AspNetCore.Components.Authorization
 @inject AuthService AuthService
 @inject NavigationManager NavManager
+@inject AuthenticationStateProvider AuthStateProvider
 
 <div class="container mt-5">
     <div class="row justify-content-center">
         <div class="col-md-4">
-            <div class="card shadow">
+            <div class="card shadow bg-dark text-white">
                 <div class="card-body">
                     <h3 class="card-title text-center">Iniciar Sesión</h3>
                     <hr />
@@ -17,22 +19,37 @@
 
                         <div class="mb-3">
                             <label class="form-label">Email</label>
-                            <InputText @bind-Value="loginModel.Email" class="form-control" placeholder="ejemplo@correo.com" />
+                            <InputText @bind-Value="loginModel.Email" class="form-control bg-secondary text-white border-0" placeholder="ejemplo@correo.com" />
                             <ValidationMessage For="@(() => loginModel.Email)" />
                         </div>
 
                         <div class="mb-3">
                             <label class="form-label">Contraseña</label>
-                            <InputText @bind-Value="loginModel.Password" type="password" class="form-control" />
+                            <InputText @bind-Value="loginModel.Password" type="password" class="form-control bg-secondary text-white border-0" />
                             <ValidationMessage For="@(() => loginModel.Password)" />
                         </div>
 
                         @if (!string.IsNullOrEmpty(errorMessage))
                         {
-                            <div class="alert alert-danger">@errorMessage</div>
+                            <div class="alert alert-danger py-2">@errorMessage</div>
                         }
 
-                        <button type="submit" class="btn btn-primary w-100">Entrar</button>
+                        <button type="submit" class="btn btn-primary w-100" disabled="@estaCargando">
+                            @if (estaCargando)
+                            {
+                                <span class="spinner-border spinner-border-sm"></span>
+                                <span class="ms-2">Verificando...</span>
+                            }
+                            else
+                            {
+                                <span>Entrar</span>
+                            }
+                        </button>
+
+                        <div class="mt-3 text-center">
+                            <span class="text-muted small">¿No tenés cuenta?</span>
+                            <NavLink href="/register" class="btn btn-link btn-sm text-info fw-bold">Registrate acá</NavLink>
+                        </div>
                     </EditForm>
                 </div>
             </div>
@@ -43,20 +60,41 @@
 @code {
     private Login loginModel = new Login();
     private string? errorMessage;
+    private bool estaCargando = false;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+        if (authState.User.Identity?.IsAuthenticated ?? false)
+        {
+            NavManager.NavigateTo("/");
+        }
+    }
 
     private async Task HandleLogin()
     {
+        estaCargando = true;
         errorMessage = null;
-        var success = await AuthService.Login(loginModel);
 
-        if (success)
+        try
         {
-            // Si el login es correcto, lo mandamos al home
-            NavManager.NavigateTo("/");
+            var success = await AuthService.Login(loginModel);
+            if (success)
+            {
+                NavManager.NavigateTo("/");
+            }
+            else
+            {
+                errorMessage = "Email o contraseña incorrectos.";
+            }
         }
-        else
+        catch (Exception)
         {
-            errorMessage = "Email o contraseña incorrectos.";
+            errorMessage = "Ocurrió un error en el servidor.";
+        }
+        finally
+        {
+            estaCargando = false;
         }
     }
 }

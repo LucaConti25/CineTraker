@@ -1,0 +1,77 @@
+﻿@page "/register"
+@using CineTraker.Shared
+@using CineTraker.Client.Services
+@inject AuthService AuthService
+@inject NavigationManager NavManager
+
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-md-4">
+            <div class="card shadow bg-dark text-white border-secondary">
+                <div class="card-body">
+                    <h3 class="card-title text-center">Crear Cuenta</h3>
+                    <hr class="border-secondary" />
+
+                    <EditForm Model="registerModel" OnValidSubmit="HandleRegister">
+                        <DataAnnotationsValidator />
+
+                        <div class="mb-3">
+                            <label class="form-label small">Email</label>
+                            <InputText @bind-Value="registerModel.Email" class="form-control bg-secondary text-white border-0" />
+                            <ValidationMessage For="@(() => registerModel.Email)" />
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label small">Contraseña</label>
+                            <InputText @bind-Value="registerModel.Password" type="password" class="form-control bg-secondary text-white border-0" />
+                            <ValidationMessage For="@(() => registerModel.Password)" />
+                        </div>
+
+                        @if (!string.IsNullOrEmpty(errorMessage))
+                        {
+                            <div class="alert alert-danger py-2 small">@errorMessage</div>
+                        }
+
+                        <button type="submit" class="btn btn-success w-100" disabled="@estaCargando">
+                            @if (estaCargando)
+                            {
+                                <span class="spinner-border spinner-border-sm"></span>
+                            }
+                            else
+                            {
+                                <span>Registrarme</span>
+                            }
+                        </button>
+                    </EditForm>
+
+                    <div class="mt-3 text-center">
+                        <NavLink href="/login" class="text-info small">Volver al login</NavLink>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    private RegisterRequest registerModel = new RegisterRequest(); // Asegurate de tener este modelo en Shared
+    private string? errorMessage;
+    private bool estaCargando = false;
+
+    private async Task HandleRegister()
+    {
+        estaCargando = true;
+        errorMessage = null;
+
+        var result = await AuthService.Register(registerModel);
+        if (result.Succeeded)
+        {
+            NavManager.NavigateTo("/login");
+        }
+        else
+        {
+            errorMessage = result.Errors.FirstOrDefault() ?? "Error al registrarse.";
+        }
+        estaCargando = false;
+    }
+}

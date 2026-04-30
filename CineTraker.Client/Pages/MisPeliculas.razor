@@ -1,6 +1,7 @@
 ﻿@page "/"
 @using CineTraker.Shared
 @using CineTraker.Shared.Models
+@using Microsoft.AspNetCore.Components.Authorization
 @inject HttpClient Http
 @inject IJSRuntime JS
 <PageTitle>CineTraker - Inicio</PageTitle>
@@ -17,18 +18,27 @@
         </div>
 
         @if (peliculas != null && !PeliculasFiltradas.Any() && !string.IsNullOrEmpty(textoBusqueda))
-        {
-            <button class="btn btn-danger" @onclick="EjecutarBusquedaInteligente" disabled="@buscandoEnApi">
-                @if (buscandoEnApi)
-                {
-                        <span class="spinner-border spinner-border-sm"></span>
-                }
-                else
-                {
-                        <span>¿Buscar en internet?</span>
-                }
-            </button>
-        }
+{
+            <AuthorizeView>
+                <Authorized>
+                    <button class="btn btn-danger" @onclick="EjecutarBusquedaInteligente" disabled="@buscandoEnApi">
+                        @if (buscandoEnApi)
+                        {
+                            <span class="spinner-border spinner-border-sm"></span>
+                        }
+                        else
+                        {
+                            <span>¿Buscar en internet?</span>
+                        }
+                    </button>
+                </Authorized>
+                <NotAuthorized>
+                    <a href="login" class="btn btn-outline-secondary btn-sm">
+                        Iniciá sesión para buscar en internet
+                    </a>
+                </NotAuthorized>
+            </AuthorizeView>
+}
     </div>
     
     @*BARRA DE FILTROS (DROPDOWNS HORIZONTALES) *@
