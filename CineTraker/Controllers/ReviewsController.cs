@@ -17,14 +17,18 @@ public class ReviewsController : ControllerBase
     }
 
     [HttpPost]
+    [Authorize]
     public async Task<IActionResult> PostReview(Review review)
     {
-        var movieExists = await _context.Movies.AnyAsync(m => m.Id == review.MovieId);
-        if (!movieExists) return NotFound("La película no existe en tu base de datos.");
+        var userId = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+        if (string.IsNullOrEmpty(userId))
+            return Unauthorized();
+
+        review.UserId = userId;
+        review.CreatedAt = DateTime.Now;
 
         _context.Reviews.Add(review);
         await _context.SaveChangesAsync();
-
         return Ok(review);
     }
 
@@ -47,35 +51,62 @@ public class ReviewsController : ControllerBase
     [HttpPut("{id}")]
     public async Task<IActionResult> UpdateReview(int id, Review updatedReview)
     {
+        var userId = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+
         if (id != updatedReview.Id) return BadRequest("El ID no coincide.");
 
         var review = await _context.Reviews.FindAsync(id);
         if (review == null) return NotFound("La reseña no existe.");
 
+        if (review.UserId != userId)
+        {
+            return Forbid("No tenés permiso para editar esta reseña.");
+        }
+
         review.Comment = updatedReview.Comment;
         review.Stars = updatedReview.Stars;
+
         try
         {
             await _context.SaveChangesAsync();
         }
         catch (DbUpdateConcurrencyException)
         {
-            return StatusCode(500, "Error al actualizar la base de datos.");
+            return StatusCode(500, "Error de concurrencia al actualizar.");
         }
 
         return NoContent();
     }
 
-    
+
     [HttpDelete("{id}")]
     public async Task<IActionResult> DeleteReview(int id)
     {
+        var userId = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
         var review = await _context.Reviews.FindAsync(id);
-        if (review == null) return NotFound("Reseña no encontrada.");
+
+        if (review == null) return NotFound();
+
+        // Validamos que la reseña pertenezca a quien pide borrarla
+        if (review.UserId != userId) return Forbid();
 
         _context.Reviews.Remove(review);
         await _context.SaveChangesAsync();
 
-        return Ok(new { mensaje = $"Reseña con ID {id} eliminada correctamente." });
+        return Ok();
+    }
+
+
+    [HttpGet("user")]
+    public async Task<ActionResult<IEnumerable<Review>>> GetUserReviews()
+    {
+        var userId = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+
+        // Ahora EF usará correctamente la relación que definiste
+        return await _context.Reviews
+            .Include(r => r.Movie)
+            .Where(r => r.UserId == userId)
+            .OrderByDescending(r => r.Id)
+            .ToListAsync();
     }
 }

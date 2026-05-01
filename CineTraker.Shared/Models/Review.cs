@@ -1,4 +1,6 @@
 ﻿using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations.Schema;
+using System.Text.Json.Serialization;
 
 namespace CineTraker.Shared
 {
@@ -12,6 +14,9 @@ namespace CineTraker.Shared
         public string? Comment { get; set; }
         public DateTime CreatedAt { get; set; } = DateTime.Now;
         public int MovieId { get; set; }
+
+        public Movie? Movie { get; set; }
+        
         public string? UserId { get; set; }
     }
 }

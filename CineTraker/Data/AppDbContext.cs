@@ -21,7 +21,7 @@ namespace CineTraker.Data
             base.OnModelCreating(modelBuilder);
 
             modelBuilder.Entity<Review>()
-                .HasOne<Movie>()
+                .HasOne<Movie>(r => r.Movie)
                 .WithMany()
                 .HasForeignKey(r => r.MovieId)
                 .OnDelete(DeleteBehavior.Cascade);
