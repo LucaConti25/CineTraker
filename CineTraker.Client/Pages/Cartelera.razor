@@ -1,0 +1,858 @@
+﻿@page "/"
+@using CineTraker.Shared
+@using CineTraker.Shared.Models
+@using Microsoft.AspNetCore.Components.Authorization
+@inject HttpClient Http
+@inject IJSRuntime JS
+<PageTitle>CineTraker - Inicio</PageTitle>
+
+<div class="container-fluid pt-2 pt-md-4 px-3 px-md-5">
+
+    @* --- BÚSQUEDA LOCAL E INTELIGENTE --- *@
+    <div class="search-box mt-0 mb-3 p-3 p-md-4 rounded shadow" style="background-color: #1e1e1e; border: 1px solid #333;">
+        <h4 class="text-light mb-3">🔍 Buscar en mi catálogo</h4>
+        <div class="input-group">
+            <input type="text" class="form-control bg-dark text-light border-secondary" 
+                   placeholder="Escribí el nombre de una película que ya esté cargada..." 
+                   @bind="textoBusqueda" @bind:event="oninput" />
+        </div>
+
+        @if (peliculas != null && !PeliculasFiltradas.Any() && !string.IsNullOrEmpty(textoBusqueda))
+{
+            <AuthorizeView>
+                <Authorized>
+                    <button class="btn btn-danger" @onclick="EjecutarBusquedaInteligente" disabled="@buscandoEnApi">
+                        @if (buscandoEnApi)
+                        {
+                            <span class="spinner-border spinner-border-sm"></span>
+                        }
+                        else
+                        {
+                            <span>¿Buscar en internet?</span>
+                        }
+                    </button>
+                </Authorized>
+                <NotAuthorized>
+                    <a href="login" class="btn btn-outline-secondary btn-sm">
+                        Iniciá sesión para buscar en internet
+                    </a>
+                </NotAuthorized>
+            </AuthorizeView>
+}
+    </div>
+    
+    @*BARRA DE FILTROS (DROPDOWNS HORIZONTALES) *@
+    <div class="d-flex flex-wrap align-items-center gap-2 mb-5">
+
+        @* Dropdown de Década *@
+        <div class="dropdown">
+            <button class="pill-dropdown @(filtrosDecadas.Any(f => f.Seleccionado) ? "active" : "")" 
+                    type="button" @onclick="ToggleDropdown" @onfocusout="CerrarDropdown">
+
+                        @{
+                            var seleccionada = filtrosDecadas.FirstOrDefault(f => f.Seleccionado);
+                            if (seleccionada != null)
+                            {
+                                <span class="fw-bold">@seleccionada.Etiqueta</span>
+                            }
+                            else
+                            {
+                                <span>DÉCADA</span>
+                                <span class="ms-2 text-muted">---</span>
+                            }
+                        }
+                <i class="bi bi-chevron-down ms-2 small"></i>
+            </button>
+
+            <ul class="dropdown-menu dropdown-menu-dark custom-dropdown-menu @(mostrarDropdown ? "show" : "")">
+                        @foreach (var decada in filtrosDecadas)
+                        {
+                        <li>
+                            <button class="dropdown-item @(decada.Seleccionado ? "active-item" : "")" 
+                                    @onmousedown="() => SeleccionarDecada(decada)">
+                                    @decada.Etiqueta
+                            </button>
+                        </li>
+                        }
+            </ul>
+        </div>
+
+        @* --- Dropdown de GÉNERO --- *@
+        <div class="dropdown">
+            <button class="pill-dropdown @(!string.IsNullOrEmpty(generoSeleccionado) ? "active" : "")"
+                    type="button" @onclick="ToggleGenero" @onfocusout="CerrarGenero">
+                @if (!string.IsNullOrEmpty(generoSeleccionado))
+                {
+                    <span class="fw-bold">@generoSeleccionado.ToUpper()</span>
+                }
+                else
+                {
+
+                    <span>GÉNERO</span>
+                    <span class="ms-2 text-muted">---</span>
+                }
+                <i class="bi bi-chevron-down ms-2 small"></i>
+            </button>
+            <ul class="dropdown-menu dropdown-menu-dark custom-dropdown-menu @(mostrarGenero ? "show" : "")">
+                <li><button class="dropdown-item" @onmousedown='() => SeleccionarGenero(null)'>TODOS</button></li>
+                @foreach (var g in generos)
+                {
+                    <li><button class="dropdown-item @(generoSeleccionado == g ? "active-item" : "")" @onmousedown="() => SeleccionarGenero(g)">@g.ToUpper()</button></li>
+                }
+            </ul>
+        </div>
+
+        @* --- Dropdown de PUNTUACIÓN --- *@
+        <div class="dropdown">
+            <button class="pill-dropdown @(ratingSeleccionado.HasValue ? "active" : "")"
+                    type="button" @onclick="ToggleRating" @onfocusout="CerrarRating">
+                @if (ratingSeleccionado.HasValue)
+                {
+                    <span class="fw-bold">⭐ +@ratingSeleccionado.Value.ToString("0.0")</span>
+                }
+                else
+                {
+
+                    <span>PUNTUACIÓN IMDB</span>
+                    <span class="ms-2 text-muted">---</span>
+                }
+                <i class="bi bi-chevron-down ms-2 small"></i>
+            </button>
+            <ul class="dropdown-menu dropdown-menu-dark custom-dropdown-menu @(mostrarRating ? "show" : "")">
+                <li><button class="dropdown-item" @onmousedown='() => SeleccionarRating(null)'>CUALQUIERA</button></li>
+                <li><button class="dropdown-item" @onmousedown="() => SeleccionarRating(6.0)">⭐ +6.0</button></li>
+                <li><button class="dropdown-item" @onmousedown="() => SeleccionarRating(7.0)">⭐ +7.0</button></li>
+                <li><button class="dropdown-item" @onmousedown="() => SeleccionarRating(8.0)">🌟 +8.0</button></li>
+                <li><button class="dropdown-item" @onmousedown="() => SeleccionarRating(9.0)">🔥 TOP (+9.0)</button></li>
+            </ul>
+        </div>
+
+        @* --- Filtro de PLATAFORMA --- *@
+        <div class="dropdown">
+            <button class="pill-dropdown @(!string.IsNullOrEmpty(plataformaSeleccionada) ? "active" : "")"
+                    type="button" @onclick="TogglePlataforma" @onfocusout="CerrarPlataforma">
+
+                        @if (!string.IsNullOrEmpty(plataformaSeleccionada))
+                        {
+                        <span class="fw-bold">@plataformaSeleccionada.ToUpper()</span>
+                        }
+                        else
+                        {
+                        <span>PLATAFORMA</span>
+                        <span class="ms-2 text-muted">---</span>
+                        }
+                <i class="bi bi-chevron-down ms-2 small"></i>
+            </button>
+
+            <ul class="dropdown-menu dropdown-menu-dark custom-dropdown-menu @(mostrarPlataforma ? "show" : "")">
+                <li><button class="dropdown-item" @onmousedown='() => SeleccionarPlataforma(null)'>CUALQUIERA</button></li>
+                        @foreach (var plat in plataformasFrecuentes)
+                        {
+                        <li>
+                            <button class="dropdown-item @(plataformaSeleccionada == plat ? "active-item" : "")" 
+                                    @onmousedown="() => SeleccionarPlataforma(plat)">
+                                    @plat.ToUpper()
+                            </button>
+                        </li>
+                        }
+            </ul>
+        </div>
+        @* Acá irían las otras píldoras (GÉNERO, DIRECTOR, etc.) siguiendo la misma estructura *@
+    </div>
+
+
+
+    @* CARTELERA DE PELÍCULAS *@
+    <h2 class="fw-bold mb-4 text-light">Cartelera</h2>
+
+    @if (peliculas.Count == 0 && !finDelCatalogo)
+    {
+            <div class="text-center mt-5">
+                <div class="spinner-border text-danger" role="status"></div>
+                <p class="text-muted mt-2">Cargando catálogo...</p>
+            </div>
+    }
+    else
+    {
+        <div class="row row-cols-2 row-cols-sm-3 row-cols-md-4 row-cols-lg-5 row-cols-xl-6 g-3 g-md-4">
+            @foreach (var peli in PeliculasFiltradas)
+            {
+                <div class="col">
+                    @* El href construye una ruta dinámica usando el Id de la base de datos *@
+                    <NavLink href="@($"/pelicula/{peli.Id}")" style="text-decoration: none;">
+                        <div class="card h-100 border-0 bg-transparent movie-card">
+                            <div class="poster-container shadow">
+                                <img src="@peli.SafePosterUrl" class="card-img-top rounded" onerror="this.src='https://placehold.co/300x450?text=Sin+Poster'" alt="@peli.Title">
+                                @if (!string.IsNullOrEmpty(peli.ImdbRating) && peli.ImdbRating != "N/A")
+                                {
+                                    <div class="imdb-rating-badge">
+                                        ⭐ @peli.ImdbRating
+                                    </div>
+                                }
+                            </div>
+                            <div class="card-body px-0 pt-2 text-center">
+                                <h6 class="text-truncate mb-0 fw-bold text-light">@peli.Title</h6>
+                                <span class="text-muted small">@peli.Year</span>
+                            </div>
+                        </div>
+                    </NavLink>
+                </div>
+            }
+
+        </div>
+
+        @if (cargandoMas)
+        {
+            <div class="text-center my-4 w-100">
+                <div class="spinner-border text-warning" role="status"></div>
+                <p class="text-muted">Buscando más joyas...</p>
+            </div>
+        }
+    }
+</div>
+
+
+
+@* MODALES Y NOTIFICACIONES *@
+@if (mostrarModalExterno)
+{
+        <div class="custom-modal-overlay">
+            <div class="custom-modal-content">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h5 class="text-warning m-0">¿Cuál de estas buscabas?</h5>
+                    <button class="btn-close btn-close-white" @onclick="() => mostrarModalExterno = false"></button>
+                </div>
+
+                <div class="modal-results-body">
+                @if (buscandoEnApi)
+                {
+                            <div class="text-center py-4">
+                                <div class="spinner-border text-warning"></div>
+                                <p class="text-muted mt-2">Consultando a internet...</p>
+                            </div>
+                }
+                else
+                {
+                            <div class="row row-cols-2 row-cols-md-3 g-3">
+                        @foreach (var res in resultadosExternos)
+                        {
+                                        <div class="col">
+                                            <div class="card h-100 bg-dark border-secondary option-card" @onclick="() => ConfirmarYGuardar(res)">
+                                                <img src="@res.SafePosterUrl" class="card-img-top">
+                                                <div class="card-body p-2">
+                                                    <p class="small fw-bold mb-0 text-truncate">@res.Title</p>
+                                                    <span class="text-muted small">@res.Year</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                        }
+                            </div>
+                }
+                </div>
+            </div>
+        </div>
+}
+
+
+
+@if (mostrarFeedback)
+{
+        <div class="feedback-toast shadow-lg border-0 animacion-entrada">
+            <div class="d-flex align-items-center p-3 text-white bg-success rounded">
+                <i class="bi bi-check-circle-fill me-2 fs-4"></i>
+                <div>
+                    <strong class="d-block">¡Agregada con éxito!</strong>
+                    <span class="small">"@peliculaAgregada" ya está en tu catálogo.</span>
+                </div>
+            </div>
+        </div>
+}
+
+
+
+
+<style>
+    body {
+        background-color: #141414;
+        color: white;
+        margin: 0;
+        padding: 0;
+    }
+
+    /* --- CONTENEDOR DE FILTROS --- */
+    .filters-container {
+        display: flex !important; 
+        flex-direction: row !important;
+        align-items: center;
+        gap: 15px; /* Espacio entre botones */
+        margin-bottom: 2rem;
+    }
+
+        /* Evitá que los dropdowns de Bootstrap rompan la fila */
+        .filters-container .dropdown {
+            display: block !important;
+        }
+
+    .dropdown {
+        display: inline-block !important;
+        width: auto !important;
+    }
+    
+
+    .pill-dropdown {
+        display: inline-flex !important;
+        width: auto !important;
+        white-space: nowrap !important; /* Evita que el texto interno se parta */
+        align-items: center;
+        justify-content: center;
+        background-color: #2b2b2b;
+        color: #efefef;
+        border: 1px solid #444;
+        border-radius: 50px;
+        padding: 6px 12px;
+        font-size: 0.75rem;
+        cursor: pointer;
+        transition: all 0.2s ease;
+    }
+
+        .pill-dropdown:hover {
+            background-color: #3d3e42;
+            border-color: #666;
+        }
+
+        .pill-dropdown.active {
+            background-color: #ffc107;
+            color: #000;
+            border-color: #ffc107;
+        }
+
+        .pill-dropdown .text-muted {
+            font-size: 0.75rem;
+            margin-left: 8px;
+        }
+
+    .platform-grid {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 12px;
+        justify-items: center;
+    }
+
+   /* --- ESTILOS PARA EL DROPDOWN DE TEXTO --- */
+.custom-dropdown-menu {
+    position: absolute !important;
+    z-index: 1100;
+    min-width: 200px !important;
+    background: rgba(30, 30, 30, 0.98) !important;
+    backdrop-filter: blur(10px);
+    border: 1px solid #444 !important;
+    border-radius: 12px !important;
+    margin-top: 5px !important;
+    box-shadow: 0 8px 16px rgba(0,0,0,0.5);
+    padding: 8px !important;
+    display: none;
+}
+
+.custom-dropdown-menu.show {
+    display: block !important;
+}
+
+.dropdown-item {
+    color: #ddd !important;
+    border-radius: 6px !important;
+    padding: 10px 15px !important;
+    font-size: 0.9rem !important;
+    cursor: pointer !important;
+    background: transparent !important;
+    border: none !important;
+    width: 100% !important;
+    text-align: left !important;
+    transition: all 0.2s ease;
+}
+
+.dropdown-item:hover {
+    background-color: rgba(255, 255, 255, 0.1) !important;
+    color: white !important;
+}
+
+/* El item seleccionado se pone amarillo como los otros */
+.active-item {
+    background-color: #ffc107 !important;
+    color: black !important;
+    font-weight: bold !important;
+}
+.dropdown-divider {
+    margin: 5px 10px;
+    opacity: 0.2;
+}
+
+
+    /* --- MENÚ DESPLEGABLE (DROPDOWN) --- */
+    .custom-dropdown-menu {
+        position: absolute !important; /* IMPORTANTE: flota, no empuja */
+        z-index: 1100;
+        min-width: 200px !important;
+        background: rgba(30, 30, 30, 0.98) !important;
+        backdrop-filter: blur(10px);
+        border: 1px solid #444 !important;
+        border-radius: 12px !important;
+        margin-top: 5px !important;
+        box-shadow: 0 8px 16px rgba(0,0,0,0.5);
+        display: none;
+    }
+
+        .custom-dropdown-menu.show {
+            position: absolute !important;
+            display: block;
+            z-index: 1000;
+        }
+
+    .dropdown-item {
+        color: #ddd !important;
+        border-radius: 6px;
+        padding: 8px 15px;
+        font-size: 0.9rem;
+        cursor: pointer;
+    }
+
+        .dropdown-item:hover {
+            background-color: rgba(255, 255, 255, 0.1) !important;
+        }
+
+    .active-item {
+        background-color: #ffc107 !important;
+        color: black !important;
+        font-weight: bold;
+    }
+
+    /* --- CARTELERA Y CARDS --- */
+    .movie-card {
+        transition: transform 0.3s ease, box-shadow 0.3s ease;
+        cursor: pointer;
+        background-color: transparent;
+    }
+
+        .movie-card:hover {
+            transform: scale(1.05);
+            z-index: 10;
+            box-shadow: 0 10px 20px rgba(0,0,0,0.5);
+        }
+
+    .poster-container {
+        border-radius: 8px;
+        overflow: hidden;
+        box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+    }
+
+        .poster-container img {
+            aspect-ratio: 2/3;
+            object-fit: cover;
+            width: 100%;
+        }
+
+    .imdb-rating-badge {
+        position: absolute;
+        top: 10px;
+        right: 10px;
+        background: rgba(0, 0, 0, 0.7);
+        color: #ffc107;
+        padding: 2px 8px;
+        border-radius: 6px;
+        font-size: 0.75rem;
+        font-weight: bold;
+        backdrop-filter: blur(4px);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    /* --- MODALES Y FEEDBACK --- */
+    .custom-modal-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0,0,0,0.85);
+        backdrop-filter: blur(10px);
+        z-index: 9999;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .custom-modal-content {
+        background: #1a1a1a;
+        border: 1px solid #444;
+        border-radius: 16px;
+        width: 90%;
+        max-width: 600px;
+        padding: 25px;
+        max-height: 80vh;
+        overflow-y: auto;
+    }
+
+    .feedback-toast {
+        position: fixed;
+        bottom: 30px;
+        right: 30px;
+        z-index: 10000;
+        min-width: 250px;
+    }
+
+    .animacion-entrada {
+        animation: slideInRight 0.5s ease-out;
+    }
+
+    @@keyframes slideInRight {
+        from{ transform: translateX(100%); opacity: 0; }
+        to { transform: translateX(0); opacity: 1; }
+
+    }
+
+    @@media (max-width: 767.98px) {
+            /* 1. Elimina el relleno que Blazor le pone al contenido principal */
+            main
+
+        {
+            padding-top: 0 !important;
+        }
+
+        /* 2. Achica la barra de navegación superior */
+        .top-row {
+            height: 50px !important;
+            min-height: 50px !important;
+            display: flex;
+            align-items: center;
+        }
+
+        /* 3. Pegar el buscador al borde superior del contenedor */
+        .container-fluid {
+            padding-top: 5px !important;
+        }
+
+    }
+</style>
+
+
+
+@code {
+    private List<Movie> peliculas = new List<Movie>();
+    private string textoBusqueda = "";
+    private bool buscandoEnApi = false;
+    private List<FiltroDecada> filtrosDecadas = new();
+
+    private bool mostrarDropdown = false; 
+    private bool mostrarGenero = false;
+    private bool mostrarRating = false;
+    private bool mostrarPlataforma = false;
+
+    private int skipActual = 0;        // Cuántas ya cargamos
+    private const int takeTanda = 20;   // Cuántas pedimos por vez
+    private bool cargandoMas = false;   // Para no pedir 2 veces lo mismo mientras carga
+    private bool finDelCatalogo = false; // Para saber si ya no hay más pelis
+
+    private void ToggleDropdown() => mostrarDropdown = !mostrarDropdown;
+    private void ToggleGenero() => mostrarGenero = !mostrarGenero;
+    private void ToggleRating() => mostrarRating = !mostrarRating;
+
+
+    private List<Movie> resultadosExternos = new(); // Para guardar lo que traiga la API
+    private bool mostrarModalExterno = false;       // Para controlar si el modal se ve o no
+    private bool mostrarFeedback = false;
+    private string peliculaAgregada = "";
+    private string? generoSeleccionado = null;
+    private string? plataformaSeleccionada = null;
+    private double? ratingSeleccionado = null;
+    private List<string> generos = new() { "Action", "Drama", "Comedy", "Thriller", "Horror", "Sci-Fi" };
+
+
+    private List<string> plataformasFrecuentes = new() { "Netflix", "MAX", "Disney+", "Prime Video", "AppleTV", "MUBI", "Clarovideo", "Paramount Plus" };
+
+    private void TogglePlataforma() => mostrarPlataforma = !mostrarPlataforma;
+
+    private async Task CerrarPlataforma()
+    {
+        await Task.Delay(200); // Delay para que tome el click antes de cerrar
+        mostrarPlataforma = false;
+        StateHasChanged();
+    }
+
+    private async Task SeleccionarPlataforma(string? p)
+    {
+        plataformaSeleccionada = p;
+        mostrarPlataforma = false;
+        await CargarCatalogo(true); // Esto dispara la query con el JOIN en el backend
+    }
+
+    private List<Movie> PeliculasFiltradas
+    {
+        get
+        {
+            var query = peliculas ?? new List<Movie>();
+
+            // Filtro 1: Texto (Búsqueda en el cliente)
+            if (!string.IsNullOrWhiteSpace(textoBusqueda))
+                query = query.Where(p => p.Title.Contains(textoBusqueda, StringComparison.OrdinalIgnoreCase)).ToList();
+
+            // Filtro 2: Década (Lógica de rangos)
+            var seleccionado = filtrosDecadas.FirstOrDefault(f => f.Seleccionado);
+            if (seleccionado != null)
+                query = query.Where(p => p.Year >= seleccionado.AnioInicio && p.Year <= seleccionado.AnioInicio + 9).ToList();
+
+            if (!string.IsNullOrEmpty(plataformaSeleccionada))
+            {
+                query = query.Where(p => p.Sources != null &&
+                             p.Sources.Any(s => s.Name.Contains(plataformaSeleccionada))).ToList();
+            }
+            // Mantenemos el orden por rating también en el filtrado de memoria
+            return query.OrderByDescending(p =>
+            {
+                double.TryParse(p.ImdbRating, System.Globalization.NumberStyles.Any, System.Globalization.CultureInfo.InvariantCulture, out var r);
+                return r;
+            }).ToList();
+        }
+    }
+
+
+
+
+    private async Task CerrarDropdown()
+    {
+        // El delay es para que el sistema llegue a registrar el clic en la década
+        // antes de que el menú desaparezca de la pantalla.
+        await Task.Delay(200);
+        mostrarDropdown = false;
+        StateHasChanged();
+    }
+
+    private async Task CerrarGenero()
+    {
+        await Task.Delay(200);
+        mostrarGenero = false;
+        StateHasChanged();
+    }
+
+    private async Task CerrarRating()
+    {
+        await Task.Delay(200);
+        mostrarRating = false;
+        StateHasChanged();
+    }
+
+
+
+    protected override async Task OnInitializedAsync()
+    {
+        for (int anio = 1930; anio <= 2020; anio += 10)
+        {
+            filtrosDecadas.Add(new FiltroDecada(anio));
+        }
+
+        var dotNetHelper = DotNetObjectReference.Create(this);
+        await JS.InvokeVoidAsync("inicializarScrollInfinito", dotNetHelper);
+        await CargarCatalogo(true);
+    }
+
+
+    [JSInvokable]
+    public async Task CargarSiguientePagina()
+    {
+        // Si ya estamos cargando o si ya no hay más películas, no hacemos nada
+        if (cargandoMas || finDelCatalogo) return;
+
+        cargandoMas = true;
+        skipActual += takeTanda; // Aumentamos el contador (ej. de 0 a 20)
+
+        // Llamamos a la API pidiendo la siguiente tanda
+        var url = $"api/Movies?skip={skipActual}&take={takeTanda}";
+
+        // Mantenemos los filtros activos si existen
+        if (!string.IsNullOrEmpty(generoSeleccionado)) url += $"&genre={generoSeleccionado}";
+        if (ratingSeleccionado.HasValue) url += $"&minRating={ratingSeleccionado.Value.ToString(System.Globalization.CultureInfo.InvariantCulture)}";
+        if (!string.IsNullOrEmpty(plataformaSeleccionada)) url += $"&platform={Uri.EscapeDataString(plataformaSeleccionada)}";
+
+        var nuevasPelis = await Http.GetFromJsonAsync<List<Movie>>(url);
+
+        if (nuevasPelis != null && nuevasPelis.Any())
+        {
+            // LA CLAVE: Agregamos las nuevas a la lista existente en lugar de borrar todo
+            peliculas?.AddRange(nuevasPelis);
+        }
+        else
+        {
+            // Si la API no devolvió nada, es porque llegamos al final del catálogo
+            finDelCatalogo = true;
+        }
+
+        cargandoMas = false;
+        StateHasChanged(); // Refrescamos la UI para que se vean los nuevos pósters
+    }
+
+    private void SeleccionarDecada(FiltroDecada filtro)
+    {
+        if (filtro.Seleccionado)
+        {
+            filtro.Seleccionado = false;
+        }
+        else
+        {
+            // Apagamos todas las demás para que solo una esté activa
+            filtrosDecadas.ForEach(f => f.Seleccionado = false);
+            filtro.Seleccionado = true;
+        }
+
+        mostrarDropdown = false;
+        StateHasChanged();
+    }
+
+
+
+
+
+    private void LimpiarTodosLosFiltros()
+    {
+        filtrosDecadas.ForEach(f => f.Seleccionado = false);
+        textoBusqueda = "";
+        StateHasChanged();
+    }
+
+
+
+
+
+    private async Task CargarCatalogo(bool esNuevaBusqueda = false)
+    {
+        if (esNuevaBusqueda)
+        {
+            skipActual = 0;
+            finDelCatalogo = false;
+            peliculas = new List<Movie>();
+        }
+
+        try
+        {
+            var queryParams = new List<string>();
+
+            // --- NUEVO: Agregamos la paginación a la URL ---
+            queryParams.Add($"skip={skipActual}");
+            queryParams.Add($"take={takeTanda}");
+
+            if (!string.IsNullOrEmpty(generoSeleccionado))
+                queryParams.Add($"genre={generoSeleccionado}");
+
+            if (ratingSeleccionado.HasValue && ratingSeleccionado > 0)
+                queryParams.Add($"minRating={ratingSeleccionado.Value.ToString(System.Globalization.CultureInfo.InvariantCulture)}");
+
+            if (!string.IsNullOrEmpty(plataformaSeleccionada))
+            {
+                var plataformaCodificada = Uri.EscapeDataString(plataformaSeleccionada);
+                queryParams.Add($"platform={plataformaCodificada}");
+            }
+
+            var url = "api/Movies?" + string.Join("&", queryParams);
+
+            var resultado = await Http.GetFromJsonAsync<List<Movie>>(url);
+
+            if (resultado != null)
+            {
+                if (esNuevaBusqueda || peliculas == null)
+                {
+                    peliculas = resultado;
+                }
+                else
+                {
+                    // Si no es nueva búsqueda, las sumamos a las que ya están
+                    peliculas.AddRange(resultado);
+                }
+
+                // Si trajo menos de los que pedimos, llegamos al final
+                if (resultado.Count < takeTanda)
+                {
+                    finDelCatalogo = true;
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error al cargar: {ex.Message}");
+        }
+    }
+
+
+
+
+
+    private async Task EjecutarBusquedaInteligente()
+    {
+        if (string.IsNullOrWhiteSpace(textoBusqueda)) return;
+
+        buscandoEnApi = true;
+        mostrarModalExterno = true; // Abrimos el modal con el spinner mientras la API responde.
+
+        try
+        {
+            // Pedimos la lista de candidatos para que el usuario elija la correcta.
+            var resultados = await Http.GetFromJsonAsync<List<Movie>>($"api/Movies/smart-search/{textoBusqueda}");
+
+            if (resultados != null)
+            {
+                resultadosExternos = resultados;
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error en SmartSearch: {ex.Message}");
+            mostrarModalExterno = false; // Si falla, cerramos el modal
+        }
+        finally
+        {
+            buscandoEnApi = false;
+            StateHasChanged(); // Forzamos el refresco para que se vea el modal con la data
+        }
+    }
+
+
+
+
+
+    private async Task ConfirmarYGuardar(Movie peli)
+    {
+        // El usuario ya eligió, ahora sí impactamos la base de datos local.
+        var response = await Http.PostAsJsonAsync("api/Movies/save-by-id", peli.ImdbID);
+
+        if (response.IsSuccessStatusCode)
+        {
+            peliculaAgregada = peli.Title;
+            mostrarModalExterno = false;
+            mostrarFeedback = true;
+
+            StateHasChanged();
+
+            await Task.Delay(2500);
+
+            mostrarFeedback = false;
+            textoBusqueda = "";
+            await CargarCatalogo(true);
+        }
+        else
+        {
+            // Leemos el mensaje de error del backend (por ejemplo, si ya existe)
+            var errorMsg = await response.Content.ReadAsStringAsync();
+            Console.WriteLine($"Error al guardar: {errorMsg}");
+        }
+
+    }
+
+    private async Task SeleccionarGenero(string? g)
+    {
+        generoSeleccionado = g;
+        mostrarGenero = false;
+        await CargarCatalogo(true);
+    }
+
+    private async Task SeleccionarRating(double? r)
+    {
+        ratingSeleccionado = r;
+        mostrarRating = false;
+        await CargarCatalogo(true);
+    }
+}
