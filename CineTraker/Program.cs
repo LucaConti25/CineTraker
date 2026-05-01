@@ -30,7 +30,6 @@ namespace CineTraker
             builder.Services.AddControllers()
                 .AddJsonOptions(options =>
                 {
-                    // Esto corta el bucle infinito de Película -> Plataforma -> Película
                     options.JsonSerializerOptions.ReferenceHandler = System.Text.Json.Serialization.ReferenceHandler.IgnoreCycles;
                     options.JsonSerializerOptions.PropertyNamingPolicy = null;
                 });
