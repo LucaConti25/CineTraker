@@ -49,14 +49,10 @@
     {
         // 1. Ejecutamos el logout apenas entra
         await AuthService.Logout();
-
-        // 2. Activamos el feedback
         mostrarFeedback = true;
         StateHasChanged();
-        // 3. Forzamos un delay asíncrono que no bloquee el navegador
         await Task.Delay(1500);
 
-        // 4. Redirigimos
         Navigation.NavigateTo("/", forceLoad: true);
     }
 }

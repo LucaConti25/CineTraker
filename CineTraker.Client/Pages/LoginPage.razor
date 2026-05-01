@@ -57,10 +57,43 @@
     </div>
 </div>
 
+@if (mostrarFeedback)
+{
+        <div class="feedback-toast shadow-lg border-0 animacion-entrada">
+            <div class="d-flex align-items-center p-3 text-white bg-success rounded">
+                <i class="bi bi-check-circle-fill me-2 fs-4"></i>
+                <div>
+                    <strong class="d-block">¡Bienvenido!</strong>
+                    <span class="small">Inicio de sesión exitoso.</span>
+                </div>
+            </div>
+        </div>
+}
+
+<style>
+    .feedback-toast {
+        position: fixed;
+        bottom: 30px;
+        right: 30px;
+        z-index: 10000;
+        min-width: 250px;
+    }
+
+    .animacion-entrada {
+        animation: slideInRight 0.5s ease-out;
+    }
+
+    @@keyframes slideInRight {
+        from { transform: translateX(100%); opacity: 0; }
+        to { transform: translateX(0); opacity: 1; }
+    }
+</style>
+
 @code {
     private Login loginModel = new Login();
     private string? errorMessage;
     private bool estaCargando = false;
+    private bool mostrarFeedback = false;
 
     protected override async Task OnInitializedAsync()
     {
@@ -81,6 +114,10 @@
             var success = await AuthService.Login(loginModel);
             if (success)
             {
+                mostrarFeedback = true; // Mostramos el toast verde
+                StateHasChanged();
+
+                await Task.Delay(1500); // Tiempo para que el usuario lo lea
                 NavManager.NavigateTo("/");
             }
             else
@@ -88,9 +125,13 @@
                 errorMessage = "Email o contraseña incorrectos.";
             }
         }
+        catch (HttpRequestException)
+        {
+            errorMessage = "No se pudo conectar con el servidor. Reintente más tarde.";
+        }
         catch (Exception)
         {
-            errorMessage = "Ocurrió un error en el servidor.";
+            errorMessage = "Ocurrió un error inesperado.";
         }
         finally
         {
