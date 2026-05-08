@@ -64,7 +64,7 @@ namespace CineTraker
                 options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
 
             builder.Services.AddIdentity<IdentityUser, IdentityRole>(options => {
-                options.Password.RequireDigit = false; // Por ahora, para que sea fácil testear
+                options.Password.RequireDigit = false; 
                 options.Password.RequiredLength = 4;
                 options.Password.RequireNonAlphanumeric = false;
                 options.Password.RequireUppercase = false;

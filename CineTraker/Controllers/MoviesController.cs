@@ -65,7 +65,19 @@ public class MoviesController : ControllerBase
     [HttpGet("{id}")]
     public async Task<ActionResult<Movie>> GetMovie(int id)
     {
-        var movie = await _context.Movies.FindAsync(id);
+        var movie = await _context.Movies
+        .Where(m => m.Id == id)
+        .Select(m => new Movie 
+        {
+            Id = m.Id,
+            Title = m.Title,
+            Plot = m.Plot,
+            PosterUrl = m.PosterUrl,
+            Genre = m.Genre,
+            Director = m.Director,
+            ImdbRating = m.ImdbRating
+        })
+        .FirstOrDefaultAsync();
 
         if (movie == null)
         {
