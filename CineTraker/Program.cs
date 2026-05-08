@@ -73,6 +73,7 @@ namespace CineTraker
 
 
             builder.Services.AddHttpClient<MovieService>();
+            builder.Services.AddHttpClient<GeminiEmbeddingService>();
             builder.Services.AddScoped<StreamingService>();
 
             
