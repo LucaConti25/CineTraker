@@ -19,6 +19,8 @@ namespace CineTraker.Shared
         public int Runtime { get; set; }
         public string? Actors { get; set; }
         public string? Rated { get; set; }
+        // Este es el vector de la IA. EF Core 8+ lo guarda como JSON automáticamente en SQL Server.
+        public float[]? PlotEmbedding { get; set; }
 
         public string? ImdbRating { get; set; }
 
