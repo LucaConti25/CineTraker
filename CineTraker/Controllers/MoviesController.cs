@@ -1,8 +1,10 @@
 ﻿
+using System.Security.Claims;
 using Azure;
 using CineTraker.Data;
 using CineTraker.Services;
 using CineTraker.Shared;
+using CineTraker.Shared.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -399,5 +401,72 @@ public class MoviesController : ControllerBase
         }
         await _context.SaveChangesAsync();
         return Ok($"Se actualizaron {contador} películas.");
+    }
+
+
+    [HttpPost("request-movie")]
+    public async Task<IActionResult> RequestMovie([FromBody] MovieRequest request)
+    {
+        var existeEnCatalogo = await _context.Movies.AnyAsync(m => m.ImdbID == request.ImdbID);
+        if (existeEnCatalogo) return BadRequest("Esta película ya forma parte del catálogo.");
+
+        var solicitudExistente = await _context.MovieRequests
+            .AnyAsync(r => r.ImdbID == request.ImdbID && r.Status == RequestStatus.Pending);
+
+        if (solicitudExistente) return BadRequest("Ya existe una solicitud pendiente para esta película.");
+
+        // 3. Obtener datos del usuario logueado desde los Claims de JWT
+        var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        var username = User.Identity?.Name;
+
+        if (string.IsNullOrEmpty(userId)) return Unauthorized();
+
+        request.RequestedByUserId = userId;
+        request.RequestedByUsername = username ?? "Usuario desconocido";
+        request.RequestedAt = DateTime.UtcNow;
+        request.Status = RequestStatus.Pending;
+
+        _context.MovieRequests.Add(request);
+        await _context.SaveChangesAsync();
+
+        return Ok(new { message = "Solicitud enviada con éxito. El administrador la revisará pronto." });
+    }
+
+
+    [Authorize(Roles = "Admin")]
+    [HttpGet("requests")]
+    public async Task<ActionResult<IEnumerable<MovieRequest>>> GetPendingRequests()
+    {
+        return await _context.MovieRequests
+            .Where(r => r.Status == RequestStatus.Pending)
+            .OrderByDescending(r => r.RequestedAt)
+            .ToListAsync();
+    }
+
+    [Authorize(Roles = "Admin")]
+    [HttpPost("approve-request/{id}")]
+    public async Task<IActionResult> ApproveRequest(int id)
+    {
+        var request = await _context.MovieRequests.FindAsync(id);
+        if (request == null) return NotFound("La solicitud no existe.");
+
+        var saveResult = await SaveMovieById(request.ImdbID);
+
+        if (saveResult.Result is OkObjectResult || saveResult.Result is BadRequestObjectResult)
+        {
+            var solicitudesRelacionadas = await _context.MovieRequests
+                .Where(r => r.ImdbID == request.ImdbID && r.Status == RequestStatus.Pending)
+                .ToListAsync();
+
+            foreach (var req in solicitudesRelacionadas)
+            {
+                req.Status = RequestStatus.Approved;
+            }
+
+            await _context.SaveChangesAsync();
+            return Ok("Película aprobada y solicitudes actualizadas.");
+        }
+
+        return BadRequest("Hubo un error al procesar la película desde la API externa.");
     }
 }

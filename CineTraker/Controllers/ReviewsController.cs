@@ -109,4 +109,21 @@ public class ReviewsController : ControllerBase
             .OrderByDescending(r => r.Id)
             .ToListAsync();
     }
+
+    [Authorize]
+    [HttpGet("my-recent-reviews")]
+    public async Task<ActionResult<IEnumerable<Review>>> GetMyRecentReviews()
+    {
+        var userId = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+        if (string.IsNullOrEmpty(userId)) return Unauthorized();
+
+        var recentReviews = await _context.Reviews // Asumiendo que tu tabla se llama Reviews
+            .Include(r => r.Movie) // Incluimos la peli para poder mostrar el título/poster
+            .Where(r => r.UserId == userId)
+            .OrderByDescending(r => r.CreatedAt)
+            .Take(5)
+            .ToListAsync();
+
+        return Ok(recentReviews);
+    }
 }
