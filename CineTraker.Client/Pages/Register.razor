@@ -4,57 +4,102 @@
 @inject AuthService AuthService
 @inject NavigationManager NavManager
 
-<div class="container mt-5">
-    <div class="row justify-content-center">
-        <div class="col-md-4">
-            <div class="card shadow bg-dark text-white border-secondary">
-                <div class="card-body">
-                    <h3 class="card-title text-center">Crear Cuenta</h3>
-                    <hr class="border-secondary" />
+<div class="login-background d-flex align-items-center justify-content-center">
+    <div class="col-11 col-sm-8 col-md-6 col-lg-4">
+        @* Tarjeta con efecto glassmorphism (transparente y borrosa) *@
+        <div class="card shadow-lg text-white border-0 rounded-4" style="background-color: rgba(33, 37, 41, 0.85); backdrop-filter: blur(10px);">
+            <div class="card-body p-5">
 
-                    <EditForm Model="registerModel" OnValidSubmit="HandleRegister">
-                        <DataAnnotationsValidator />
-
-                        <div class="mb-3">
-                            <label class="form-label small">Email</label>
-                            <InputText @bind-Value="registerModel.Email" class="form-control bg-secondary text-white border-0" />
-                            <ValidationMessage For="@(() => registerModel.Email)" />
-                        </div>
-
-                        <div class="mb-3">
-                            <label class="form-label small">Contraseña</label>
-                            <InputText @bind-Value="registerModel.Password" type="password" class="form-control bg-secondary text-white border-0" />
-                            <ValidationMessage For="@(() => registerModel.Password)" />
-                        </div>
-
-                        @if (!string.IsNullOrEmpty(errorMessage))
-                        {
-                            <div class="alert alert-danger py-2 small">@errorMessage</div>
-                        }
-
-                        <button type="submit" class="btn btn-success w-100" disabled="@estaCargando">
-                            @if (estaCargando)
-                            {
-                                <span class="spinner-border spinner-border-sm"></span>
-                            }
-                            else
-                            {
-                                <span>Registrarme</span>
-                            }
-                        </button>
-                    </EditForm>
-
-                    <div class="mt-3 text-center">
-                        <NavLink href="/login" class="text-info small">Volver al login</NavLink>
-                    </div>
+                @* Branding *@
+                <div class="text-center mb-4">
+                    <h2 class="text-warning fw-bold mb-1"><i class="bi bi-film"></i> CineTraker</h2>
+                    <p class="text-muted small">Únete a la expedición</p>
                 </div>
+
+                <EditForm Model="registerModel" OnValidSubmit="HandleRegister">
+                    <DataAnnotationsValidator />
+
+                    @* Input de Username con Icono *@
+                    <div class="mb-3">
+                        <label class="form-label text-light small">Nombre de Usuario</label>
+                        <div class="input-group shadow-sm">
+                            <span class="input-group-text bg-secondary border-0 text-warning"><i class="bi bi-person-fill"></i></span>
+                            <InputText @bind-Value="registerModel.Username" class="form-control bg-secondary text-white border-0 shadow-none" placeholder="Elegí tu apodo" />
+                        </div>
+                        <ValidationMessage For="@(() => registerModel.Username)" class="text-danger small mt-1" />
+                    </div>
+
+                    @* Input de Email con Icono *@
+                    <div class="mb-3">
+                        <label class="form-label text-light small">Email</label>
+                        <div class="input-group shadow-sm">
+                            <span class="input-group-text bg-secondary border-0 text-warning"><i class="bi bi-envelope-fill"></i></span>
+                            <InputText @bind-Value="registerModel.Email" class="form-control bg-secondary text-white border-0 shadow-none" placeholder="ejemplo@correo.com" />
+                        </div>
+                        <ValidationMessage For="@(() => registerModel.Email)" class="text-danger small mt-1" />
+                    </div>
+
+                    @* Input de Password con Icono *@
+                    <div class="mb-4">
+                        <label class="form-label text-light small">Contraseña</label>
+                        <div class="input-group shadow-sm">
+                            <span class="input-group-text bg-secondary border-0 text-warning"><i class="bi bi-lock-fill"></i></span>
+                            <InputText @bind-Value="registerModel.Password" type="password" class="form-control bg-secondary text-white border-0 shadow-none" placeholder="********" />
+                        </div>
+                        <ValidationMessage For="@(() => registerModel.Password)" class="text-danger small mt-1" />
+                    </div>
+
+                    @if (!string.IsNullOrEmpty(errorMessage))
+                    {
+                                <div class="alert alert-danger py-2 small border-0 shadow-sm"><i class="bi bi-exclamation-triangle-fill"></i> @errorMessage</div>
+                    }
+
+                    <button type="submit" class="btn btn-warning w-100 fw-bold shadow-sm rounded-3 py-2 mt-2" disabled="@estaCargando">
+                        @if (estaCargando)
+                        {
+                                    <span class="spinner-border spinner-border-sm text-dark"></span>
+                                    <span class="ms-2 text-dark">Creando cuenta...</span>
+                        }
+                        else
+                        {
+                                    <span><i class="bi bi-person-plus-fill"></i> Registrarme</span>
+                        }
+                    </button>
+
+                    <div class="mt-4 text-center">
+                        <span class="text-muted small">¿Ya tenés cuenta?</span>
+                        <NavLink href="/login" class="btn btn-link btn-sm text-warning fw-bold text-decoration-none">Iniciá sesión acá</NavLink>
+                    </div>
+                </EditForm>
             </div>
         </div>
     </div>
 </div>
 
+<style>
+    /* Fondo inmersivo que ocupa toda la pantalla sin scroll */
+    .login-background {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100vw;
+        height: 100vh;
+        /* Usamos la misma imagen para mantener la coherencia visual */
+        background: linear-gradient(rgba(0, 0, 0, 0.7), rgba(15, 15, 15, 0.95)), url('https://images.unsplash.com/photo-1489599849927-2ee91cede3ba?q=80&w=1920') no-repeat center center;
+        background-size: cover;
+        overflow: hidden;
+        z-index: 1050; 
+    }
+
+    /* Ajuste para que el input no se ponga blanco al hacer clic */
+    .form-control:focus {
+        background-color: #495057;
+        color: white;
+    }
+</style>
+
 @code {
-    private RegisterRequest registerModel = new RegisterRequest(); // Asegurate de tener este modelo en Shared
+    private RegisterRequest registerModel = new RegisterRequest();
     private string? errorMessage;
     private bool estaCargando = false;
 

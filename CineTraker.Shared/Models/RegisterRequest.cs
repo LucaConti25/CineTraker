@@ -9,6 +9,11 @@ namespace CineTraker.Shared
 {
     public class RegisterRequest
     {
+        [Required(ErrorMessage = "El nombre de usuario es obligatorio")]
+        [StringLength(20, MinimumLength = 3, ErrorMessage = "El nombre de usuario debe tener entre 3 y 20 caracteres")]
+        [RegularExpression(@"^[a-zA-Z0-9_]+$", ErrorMessage = "Solo se permiten letras, números y guiones bajos")]
+        public string Username { get; set; } = string.Empty;
+
         [Required(ErrorMessage = "El email es obligatorio")]
         [EmailAddress(ErrorMessage = "Formato de email inválido")]
         public string Email { get; set; } = string.Empty;

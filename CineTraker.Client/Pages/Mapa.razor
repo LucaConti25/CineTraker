@@ -73,7 +73,6 @@
 </AuthorizeView>
 
 @code {
-    // --- CAMBIO: Ahora recibimos el ID del Mapa, no el de la película ---
     [Parameter] public int MapId { get; set; }
 
     private bool estaGuardando = false;
@@ -83,7 +82,6 @@
     private Movie? peliculaSeleccionada;
     private DotNetObjectReference<Mapa>? objRef;
 
-    // Guardamos variables del mapa para el autoguardado
     private int seedMovieId = 0;
     private string mapName = "Mapa de Recomendaciones";
 
@@ -117,11 +115,8 @@
 
                     if (!string.IsNullOrEmpty(mapaGuardado.GraphJson))
                     {
-                        // Mapa existente: lo cargamos
                         await JS.InvokeVoidAsync("cargarMapaDesdeJson", mapaGuardado.GraphJson, objRef);
 
-                        // --- NUEVO: Clavamos geométricamente la semilla en el centro y la bloqueamos ---
-                        // Borrá las dos líneas anteriores y poné esta:
                         await JS.InvokeVoidAsync("fijarNodoSemilla", seedMovieId);
                     }
                     else

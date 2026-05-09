@@ -49,12 +49,11 @@ namespace CineTraker.Server.Controllers
         [AllowAnonymous]
         public async Task<IActionResult> Register([FromBody] RegisterRequest model)
         {
-            var user = new IdentityUser { UserName = model.Email, Email = model.Email };
+            var user = new IdentityUser { UserName = model.Username, Email = model.Email };
             var result = await _userManager.CreateAsync(user, model.Password);
 
             if (result.Succeeded)
             {
-                // Opcional: Asignar rol de "User" por defecto
                 await _userManager.AddToRoleAsync(user, "User");
                 return Ok(new RegisterResult { Succeeded = true });
             }
