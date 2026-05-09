@@ -281,6 +281,18 @@
             bloquearNodosPadres();
         };
 
+
+        window.fijarNodoSemilla = (id) => {
+            if (nodes && nodes.get(id)) {
+                nodes.update({
+                    id: id,
+                    x: 0,
+                    y: 0,
+                    fixed: { x: true, y: true }
+                });
+            }
+        };
+
         function bloquearNodosPadres() {
             if (!nodes || !edges) return;
             const aristas = edges.get();

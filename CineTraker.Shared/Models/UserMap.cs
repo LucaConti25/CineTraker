@@ -18,5 +18,6 @@ namespace CineTraker.Shared.Models
         public int SeedMovieId { get; set; }
         public int TotalMovies { get; set; }
         public int WatchedMovies { get; set; }
+        public Movie? SeedMovie { get; set; }
     }
 }
