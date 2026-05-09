@@ -25,24 +25,36 @@
 
             @if (mostrarModal)
             {
-                <div class="modal-overlay">
-                    <div class="modal-content bg-secondary p-3 rounded shadow">
-                        <h4>Puntuar: @peliculaSeleccionada?.Title</h4>
-                        <div class="stars my-3">
+        <div class="modal-overlay">
+            <div class="modal-content bg-secondary p-3 rounded shadow">
+                <h4>Puntuar: @peliculaSeleccionada?.Title</h4>
+
+                <div class="stars my-3">
                             @for (int i = 1; i <= 5; i++)
                             {
                                 int starIndex = i;
-                                <i class="bi @(puntuacionTemp >= i ? "bi-star-fill" : "bi-star")" 
-                                style="cursor:pointer; color: gold; font-size: 1.5rem;"
-                                @onclick="() => puntuacionTemp = starIndex"></i>
+                            <i class="bi @(puntuacionTemp >= i ? "bi-star-fill" : "bi-star")" 
+                            style="cursor:pointer; color: gold; font-size: 1.5rem;"
+                            @onclick="() => puntuacionTemp = starIndex"></i>
                             }
-                        </div>
-                        <div class="d-flex justify-content-between">
-                            <button class="btn btn-danger" @onclick="() => mostrarModal = false">Cancelar</button>
-                            <button class="btn btn-success" @onclick="GuardarYExpandir">Guardar y Explorar</button>
-                        </div>
-                    </div>
                 </div>
+
+                <div class="mb-3 text-start">
+                    <label class="form-label text-white">Reseña para el diario (Opcional):</label>
+                    <textarea class="form-control bg-dark text-white border-primary" 
+                              rows="3" 
+                              @bind="comentarioTemp" 
+                              placeholder="¿Qué te pareció?"></textarea>
+                </div>
+
+                <div class="d-flex justify-content-between">
+                    <button class="btn btn-danger" @onclick="() => mostrarModal = false">Cancelar</button>
+                    <button class="btn btn-success" @onclick="GuardarYExpandir" disabled="@(puntuacionTemp == 0)">
+                        Guardar y Explorar
+                    </button>
+                </div>
+            </div>
+        </div>
             }
         </div>
     </Authorized>
@@ -68,6 +80,7 @@
     private bool estaGuardando = false;
     private bool mostrarModal = false;
     private int puntuacionTemp = 0;
+    private string? comentarioTemp = "";
     private Movie? peliculaSeleccionada;
     private DotNetObjectReference<Mapa>? objRef;
 
@@ -103,13 +116,23 @@
     {
         peliculaSeleccionada = await Http.GetFromJsonAsync<Movie>($"/api/movies/{id}");
         puntuacionTemp = 0;
+        comentarioTemp = "";
         mostrarModal = true;
         StateHasChanged();
     }
 
     private async Task GuardarYExpandir()
     {
-        if (peliculaSeleccionada == null) return;
+        if (peliculaSeleccionada == null || puntuacionTemp == 0) return;
+
+        // 1. PRIMERO GUARDAMOS LA REVIEW EN LA BASE DE DATOS (EL DIARIO)
+        var nuevaReview = new Review
+            {
+                MovieId = peliculaSeleccionada.Id,
+                Stars = puntuacionTemp,
+                Comment = comentarioTemp
+            };
+        await Http.PostAsJsonAsync("/api/reviews", nuevaReview);
 
         if (puntuacionTemp > 1)
         {
@@ -117,10 +140,12 @@
             string excluidosQuery = string.Join(",", idsEnMapa);
 
             var nuevoGrafo = await Http.GetFromJsonAsync<MovieGraph>(
-                $"/api/recommendation/grafo/{peliculaSeleccionada.Id}?excluidos={excluidosQuery}");
+            $"/api/recommendation/grafo/{peliculaSeleccionada.Id}?excluidos={excluidosQuery}");
 
-            if (nuevoGrafo != null)
+            if (nuevoGrafo != null && nuevoGrafo.Nodos.Any())
             {
+                // NUEVO: Le avisamos al JS que marque el nodo padre como "Expandido"
+                await JS.InvokeVoidAsync("marcarNodoComoExpandido", peliculaSeleccionada.Id);
                 await JS.InvokeVoidAsync("inyectarNodos", nuevoGrafo);
             }
         }
@@ -177,6 +202,12 @@
             // Si no está logueado, lo mandamos al login y recordamos a qué película quería entrar
             Nav.NavigateTo($"login?returnUrl=mapa/{MovieId}");
         }
+    }
+
+    [JSInvokable]
+    public async Task GuardarMovimientoManual()
+    {
+        await AutoguardarMapa();
     }
 }
 
