@@ -91,12 +91,12 @@ namespace CineTraker.Controllers
 
         [Authorize]
         [HttpGet("my-recent-maps")]
-        public async Task<ActionResult<IEnumerable<UserMap>>> GetMyRecentMaps() // Ajustá 'RecommendationMap' a tu clase real
+        public async Task<ActionResult<IEnumerable<UserMap>>> GetMyRecentMaps() 
         {
             var userId = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
             if (string.IsNullOrEmpty(userId)) return Unauthorized();
 
-            var recentMaps = await _context.UserMaps // Ajustá el DbSet
+            var recentMaps = await _context.UserMaps 
                 .Where(m => m.UserId == userId)
                 .OrderByDescending(m => m.CreatedDate)
                 .Take(5)
