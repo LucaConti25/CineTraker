@@ -64,6 +64,7 @@ namespace CineTraker
                 options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
 
             builder.Services.AddIdentity<IdentityUser, IdentityRole>(options => {
+                options.User.RequireUniqueEmail = true;
                 options.Password.RequireDigit = false; 
                 options.Password.RequiredLength = 4;
                 options.Password.RequireNonAlphanumeric = false;
