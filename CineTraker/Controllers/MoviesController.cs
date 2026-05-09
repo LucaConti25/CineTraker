@@ -26,6 +26,7 @@ public class MoviesController : ControllerBase
     [AllowAnonymous]
     [HttpGet]
     public async Task<ActionResult<IEnumerable<Movie>>> GetMovies(
+        [FromQuery] string? search = null,
         [FromQuery] string? genre = null, 
         [FromQuery] double? minRating = null,
         [FromQuery] string? platform = null,
@@ -35,6 +36,11 @@ public class MoviesController : ControllerBase
         var query = _context.Movies
         .Include(m => m.Sources)
         .AsQueryable();
+
+        if (!string.IsNullOrEmpty(search))
+        {
+            query = query.Where(m => m.Title.Contains(search));
+        }
 
         if (!string.IsNullOrEmpty(genre))
         {

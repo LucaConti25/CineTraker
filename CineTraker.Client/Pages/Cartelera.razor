@@ -12,33 +12,41 @@
     <div class="search-box mt-0 mb-3 p-3 p-md-4 rounded shadow" style="background-color: #1e1e1e; border: 1px solid #333;">
         <h4 class="text-light mb-3">🔍 Buscar en mi catálogo</h4>
         <div class="input-group">
-            <input type="text" class="form-control bg-dark text-light border-secondary" 
-                   placeholder="Escribí el nombre de una película que ya esté cargada..." 
-                   @bind="textoBusqueda" @bind:event="oninput" />
+           <input type="text" class="form-control bg-dark text-light border-secondary" 
+           placeholder="Escribí el nombre de una película..." 
+           value="@textoBusqueda" 
+           @oninput="AlEscribir" />
         </div>
 
-        @if (peliculas != null && !PeliculasFiltradas.Any() && !string.IsNullOrEmpty(textoBusqueda))
-{
-            <AuthorizeView>
-                <Authorized>
-                    <button class="btn btn-danger" @onclick="EjecutarBusquedaInteligente" disabled="@buscandoEnApi">
-                        @if (buscandoEnApi)
-                        {
-                            <span class="spinner-border spinner-border-sm"></span>
-                        }
-                        else
-                        {
-                            <span>¿Buscar en internet?</span>
-                        }
-                    </button>
-                </Authorized>
-                <NotAuthorized>
-                    <a href="login" class="btn btn-outline-secondary btn-sm">
-                        Iniciá sesión para buscar en internet
-                    </a>
-                </NotAuthorized>
-            </AuthorizeView>
-}
+        @if (peliculas != null && peliculas.Count == 0 && !string.IsNullOrEmpty(textoBusqueda) && !cargandoMas)
+        {
+            <div class="alert bg-dark border-secondary text-center py-5 my-4 rounded-4 shadow-sm">
+                <i class="bi bi-film text-muted" style="font-size: 3rem;"></i>
+                <h4 class="text-light mt-3">No tenemos "@textoBusqueda" en el radar</h4>
+                <p class="text-muted">Parece que nadie exploró esta película todavía.</p>
+
+                <AuthorizeView>
+                    <Authorized>
+                        <button class="btn btn-warning mt-2 fw-bold shadow-sm" @onclick="EjecutarBusquedaInteligente" disabled="@buscandoEnApi">
+                            @if (buscandoEnApi)
+                            {
+                                    <span class="spinner-border spinner-border-sm text-dark"></span>
+                                    <span class="ms-2 text-dark">Rastreando en internet...</span>
+                            }
+                            else
+                            {
+                                    <span><i class="bi bi-globe"></i> Buscar e importar desde OMDB</span>
+                            }
+                        </button>
+                    </Authorized>
+                    <NotAuthorized>
+                        <a href="login" class="btn btn-outline-warning mt-2">
+                            Iniciá sesión para importar películas
+                        </a>
+                    </NotAuthorized>
+                </AuthorizeView>
+            </div>
+        }
     </div>
     
     @*BARRA DE FILTROS (DROPDOWNS HORIZONTALES) *@
@@ -533,13 +541,13 @@
 </style>
 
 
-
+@using System.Timers
 @code {
     private List<Movie> peliculas = new List<Movie>();
     private string textoBusqueda = "";
     private bool buscandoEnApi = false;
     private List<FiltroDecada> filtrosDecadas = new();
-
+    private Timer timerBusqueda;
     private bool mostrarDropdown = false; 
     private bool mostrarGenero = false;
     private bool mostrarRating = false;
@@ -588,10 +596,6 @@
         get
         {
             var query = peliculas ?? new List<Movie>();
-
-            // Filtro 1: Texto (Búsqueda en el cliente)
-            if (!string.IsNullOrWhiteSpace(textoBusqueda))
-                query = query.Where(p => p.Title.Contains(textoBusqueda, StringComparison.OrdinalIgnoreCase)).ToList();
 
             // Filtro 2: Década (Lógica de rangos)
             var seleccionado = filtrosDecadas.FirstOrDefault(f => f.Seleccionado);
@@ -642,6 +646,18 @@
 
     protected override async Task OnInitializedAsync()
     {
+        timerBusqueda = new Timer(500);
+        timerBusqueda.AutoReset = false;
+        timerBusqueda.Elapsed += async (sender, e) =>
+        {
+            // Cuando pasan los 500ms sin teclear, buscamos en el servidor
+            await InvokeAsync(async () =>
+            {
+                await CargarCatalogo(true);
+                StateHasChanged();
+            });
+        };
+
         for (int anio = 1930; anio <= 2020; anio += 10)
         {
             filtrosDecadas.Add(new FiltroDecada(anio));
@@ -652,20 +668,25 @@
         await CargarCatalogo(true);
     }
 
+    private void AlEscribir(ChangeEventArgs e)
+    {
+        textoBusqueda = e.Value?.ToString() ?? "";
 
+        // al tocar un, apagamos y prendemos el reloj
+        // para que vuelva a contar los 500ms desde cero.
+        timerBusqueda.Stop();
+        timerBusqueda.Start();
+    }
     [JSInvokable]
     public async Task CargarSiguientePagina()
     {
-        // Si ya estamos cargando o si ya no hay más películas, no hacemos nada
         if (cargandoMas || finDelCatalogo) return;
 
         cargandoMas = true;
-        skipActual += takeTanda; // Aumentamos el contador (ej. de 0 a 20)
+        skipActual += takeTanda;
 
-        // Llamamos a la API pidiendo la siguiente tanda
         var url = $"api/Movies?skip={skipActual}&take={takeTanda}";
 
-        // Mantenemos los filtros activos si existen
         if (!string.IsNullOrEmpty(generoSeleccionado)) url += $"&genre={generoSeleccionado}";
         if (ratingSeleccionado.HasValue) url += $"&minRating={ratingSeleccionado.Value.ToString(System.Globalization.CultureInfo.InvariantCulture)}";
         if (!string.IsNullOrEmpty(plataformaSeleccionada)) url += $"&platform={Uri.EscapeDataString(plataformaSeleccionada)}";
@@ -674,12 +695,10 @@
 
         if (nuevasPelis != null && nuevasPelis.Any())
         {
-            // LA CLAVE: Agregamos las nuevas a la lista existente en lugar de borrar todo
             peliculas?.AddRange(nuevasPelis);
         }
         else
         {
-            // Si la API no devolvió nada, es porque llegamos al final del catálogo
             finDelCatalogo = true;
         }
 
@@ -695,7 +714,6 @@
         }
         else
         {
-            // Apagamos todas las demás para que solo una esté activa
             filtrosDecadas.ForEach(f => f.Seleccionado = false);
             filtro.Seleccionado = true;
         }
@@ -735,6 +753,9 @@
             // --- NUEVO: Agregamos la paginación a la URL ---
             queryParams.Add($"skip={skipActual}");
             queryParams.Add($"take={takeTanda}");
+
+            if (!string.IsNullOrWhiteSpace(textoBusqueda))
+                queryParams.Add($"search={Uri.EscapeDataString(textoBusqueda)}");
 
             if (!string.IsNullOrEmpty(generoSeleccionado))
                 queryParams.Add($"genre={generoSeleccionado}");
