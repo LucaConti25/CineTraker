@@ -3,6 +3,7 @@
 @using CineTraker.Shared.Models
 @using Microsoft.AspNetCore.Components.Authorization
 @inject HttpClient Http
+@inject AuthenticationStateProvider AuthStateProvider
 @inject IJSRuntime JS
 <PageTitle>CineTraker - Inicio</PageTitle>
 
@@ -552,7 +553,7 @@
     private bool mostrarGenero = false;
     private bool mostrarRating = false;
     private bool mostrarPlataforma = false;
-
+    private bool esAdmin = false;
     private int skipActual = 0;        // Cuántas ya cargamos
     private const int takeTanda = 20;   // Cuántas pedimos por vez
     private bool cargandoMas = false;   // Para no pedir 2 veces lo mismo mientras carga
@@ -646,6 +647,10 @@
 
     protected override async Task OnInitializedAsync()
     {
+        var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+        var user = authState.User;
+        esAdmin = user.IsInRole("Admin");
+
         timerBusqueda = new Timer(500);
         timerBusqueda.AutoReset = false;
         timerBusqueda.Elapsed += async (sender, e) =>
@@ -837,30 +842,61 @@
 
     private async Task ConfirmarYGuardar(Movie peli)
     {
-        // El usuario ya eligió, ahora sí impactamos la base de datos local.
-        var response = await Http.PostAsJsonAsync("api/Movies/save-by-id", peli.ImdbID);
-
-        if (response.IsSuccessStatusCode)
+        if (esAdmin)
         {
-            peliculaAgregada = peli.Title;
-            mostrarModalExterno = false;
-            mostrarFeedback = true;
+            var response = await Http.PostAsJsonAsync("api/Movies/save-by-id", peli.ImdbID);
 
-            StateHasChanged();
+            if (response.IsSuccessStatusCode)
+            {
+                peliculaAgregada = peli.Title;
+                mostrarModalExterno = false;
+                mostrarFeedback = true;
 
-            await Task.Delay(2500);
+                StateHasChanged();
 
-            mostrarFeedback = false;
-            textoBusqueda = "";
-            await CargarCatalogo(true);
+                await Task.Delay(2500);
+
+                mostrarFeedback = false;
+                textoBusqueda = "";
+                await CargarCatalogo(true);
+            }
+            else
+            {
+                var errorMsg = await response.Content.ReadAsStringAsync();
+                Console.WriteLine($"Error al guardar: {errorMsg}");
+            }
         }
         else
         {
-            // Leemos el mensaje de error del backend (por ejemplo, si ya existe)
-            var errorMsg = await response.Content.ReadAsStringAsync();
-            Console.WriteLine($"Error al guardar: {errorMsg}");
-        }
+            var solicitud = new MovieRequest
+                {
+                    ImdbID = peli.ImdbID,
+                    Title = peli.Title,
+                    Year = peli.Year.ToString(),
+                    PosterUrl = peli.PosterUrl
+                };
 
+            var response = await Http.PostAsJsonAsync("api/Movies/request-movie", solicitud);
+
+            if (response.IsSuccessStatusCode)
+            {
+                mostrarModalExterno = false;
+                peliculaAgregada = peli.Title + " (Solicitud enviada al Administrador)";
+                mostrarFeedback = true;
+
+                StateHasChanged();
+
+                await Task.Delay(2500);
+
+                mostrarFeedback = false;
+                textoBusqueda = "";
+            }
+            else
+            {
+                var errorMsg = await response.Content.ReadAsStringAsync();
+                Console.WriteLine($"Error en la solicitud: {errorMsg}");
+            }
+        }
     }
 
     private async Task SeleccionarGenero(string? g)

@@ -1,0 +1,330 @@
+﻿@page "/perfil"
+@using CineTraker.Shared
+@using CineTraker.Shared.Models
+@using Microsoft.AspNetCore.Authorization
+@using Microsoft.AspNetCore.Components.Authorization
+@attribute [Authorize]
+@inject HttpClient Http
+@inject AuthenticationStateProvider AuthStateProvider
+
+<div class="container-fluid pt-4 px-md-5">
+    <h2 class="text-light fw-bold mb-4">Mi Perfil</h2>
+
+    <ul class="nav nav-pills mb-4 custom-tabs">
+        <li class="nav-item">
+            <button class="nav-link @(pestañaActiva == "diario" ? "active" : "")" @onclick='() => pestañaActiva = "diario"'>
+                <i class="bi bi-journal-text"></i> Mi Diario
+            </button>
+        </li>
+        <li class="nav-item">
+            <button class="nav-link @(pestañaActiva == "mapas" ? "active" : "")" @onclick='() => pestañaActiva = "mapas"'>
+                <i class="bi bi-map"></i> Mis Mapas
+            </button>
+        </li>
+
+        <AuthorizeView Roles="Admin">
+            <Authorized>
+                <li class="nav-item">
+                    <button class="nav-link text-warning fw-bold @(pestañaActiva == "admin" ? "active" : "")" id="admin-tab" @onclick='() => pestañaActiva = "admin"'>
+                        <i class="bi bi-shield-lock-fill"></i> Solicitudes de Carga
+                    </button>
+                </li>
+            </Authorized>
+        </AuthorizeView>
+    </ul>
+
+    <div class="tab-content text-light">
+
+        @if (pestañaActiva == "diario")
+        {
+                   <div class="animacion-fade">
+                    <div class="d-flex justify-content-between align-items-end mb-4">
+                        <h4 class="text-warning mb-0">Mis Últimas Reseñas</h4>
+                        <a href="/mis-peliculas" class="btn btn-outline-warning btn-sm fw-bold">
+                            Ver todas <i class="bi bi-arrow-right"></i>
+                        </a>
+                    </div>
+
+                @if (cargandoResenas)
+                {
+                            <div class="text-center py-4">
+                                <div class="spinner-border text-warning"></div>
+                            </div>
+                }
+                else if (misResenas == null || !misResenas.Any())
+                {
+                            <div class="alert bg-dark border-secondary text-center py-4">
+                                <i class="bi bi-pencil-square text-muted fs-2"></i>
+                                <h6 class="text-light mt-2">Aún no escribiste ninguna reseña</h6>
+                                <p class="text-muted small mb-0">Tus últimas opiniones sobre películas aparecerán acá.</p>
+                            </div>
+                }
+                else
+                {
+                        <div class="list-group">
+                            @foreach (var review in misResenas)
+                            {
+                                            <div class="list-group-item bg-dark border-secondary text-light p-3 mb-2 rounded shadow-sm">
+                                                <div class="d-flex justify-content-between align-items-center mb-2">
+                                                    <h6 class="fw-bold mb-0 text-warning">
+                                            @review.Movie?.Title
+                                                    </h6>
+                                                    <span class="badge bg-secondary">
+                                                        ⭐ @review.Stars / 5
+                                                    </span>
+                                                </div>
+                                                <p class="small text-muted mb-1 fst-italic">
+                                                    "@review.Comment"
+                                                </p>
+                                                <small class="text-secondary" style="font-size: 0.7rem;">
+                                        @review.CreatedAt.ToString("dd/MM/yyyy")
+                                                </small>
+                                            </div>
+                            }
+                        </div>
+                }
+            </div>
+        }
+
+        @if (pestañaActiva == "mapas")
+        {
+                    <div class="animacion-fade">
+                    <div class="d-flex justify-content-between align-items-end mb-4">
+                        <h4 class="text-warning mb-0">Mis Últimos Mapas</h4>
+                        <a href="/mis-mapas" class="btn btn-outline-warning btn-sm fw-bold">
+                            Ver todos <i class="bi bi-arrow-right"></i>
+                        </a>
+                    </div>
+
+                @if (cargandoMapas)
+                {
+                            <div class="text-center py-4">
+                                <div class="spinner-border text-warning"></div>
+                            </div>
+                }
+                else if (misMapas == null || !misMapas.Any())
+                {
+                            <div class="alert bg-dark border-secondary text-center py-4 shadow-sm">
+                                <i class="bi bi-diagram-3 text-muted" style="font-size: 2.5rem;"></i>
+                                <h6 class="text-light mt-3">Aún no creaste ningún mapa</h6>
+                                <p class="text-muted small mb-0">Tus redes de recomendación personalizadas aparecerán acá.</p>
+                            </div>
+                }
+                else
+                {
+                        <div class="row row-cols-1 row-cols-md-2 g-3">
+                            @foreach (var mapa in misMapas)
+                            {
+                                <div class="col">
+                                    <div class="card bg-dark border-secondary h-100 p-3 shadow-sm card-hover">
+                                        <h6 class="text-warning fw-bold mb-1 text-truncate">@mapa.Name</h6>
+
+                                        <div class="d-flex justify-content-between align-items-center mt-auto">
+                                            <small class="text-secondary" style="font-size: 0.75rem;">
+                                                <i class="bi bi-calendar-event"></i> @mapa.CreatedDate.ToString("dd/MM/yyyy")
+                                            </small>
+                                            <a href="/mapa/@mapa.Id" class="btn btn-sm btn-outline-light" style="font-size: 0.75rem;">
+                                                Ver Mapa
+                                            </a>
+                                        </div>
+                                    </div>
+                                </div>
+                            }
+                        </div>
+                }
+                </div>
+        }
+
+        @if (pestañaActiva == "admin")
+        {
+                <AuthorizeView Roles="Admin">
+                    <Authorized>
+                        <div class="animacion-fade">
+                            <h4 class="mb-4 text-warning">Películas Pendientes de Aprobación</h4>
+
+                        @if (cargandoSolicitudes)
+                        {
+                                    <div class="text-center py-4">
+                                        <div class="spinner-border text-warning"></div>
+                                    </div>
+                        }
+                        else if (solicitudes == null || !solicitudes.Any())
+                        {
+                                    <div class="alert border-0 text-center py-5" style="background-color: rgba(255, 193, 7, 0.1);">
+                                        <i class="bi bi-check2-circle text-warning fs-1"></i>
+                                        <h5 class="text-warning mt-3">¡Todo al día!</h5>
+                                        <p class="text-muted mb-0">No hay nuevas solicitudes de carga de los usuarios.</p>
+                                    </div>
+                        }
+                        else
+                        {
+                                    <div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-4">
+                                @foreach (var req in solicitudes)
+                                {
+                                                <div class="col">
+                                                    <div class="card bg-dark border-secondary h-100 flex-row p-2 shadow-sm">
+                                                        <img src="@req.PosterUrl" class="rounded" style="width: 90px; object-fit: cover;" onerror="this.src='https://placehold.co/300x450?text=Sin+Poster'" alt="@req.Title">
+                                                        <div class="card-body p-2 ms-2 d-flex flex-column justify-content-between">
+                                                            <div>
+                                                                <h6 class="text-light fw-bold mb-0 text-truncate" title="@req.Title">@req.Title</h6>
+                                                                <small class="text-muted">@req.Year</small>
+                                                            </div>
+                                                            <div class="mt-2">
+                                                                <small class="d-block text-info mb-2" style="font-size: 0.75rem;">
+                                                                    <i class="bi bi-person-fill"></i> @req.RequestedByUsername
+                                                                </small>
+                                                                <button class="btn btn-sm btn-success w-100 fw-bold" @onclick="() => AprobarSolicitud(req)">
+                                                                    <i class="bi bi-check-circle"></i> Aprobar
+                                                                </button>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                }
+                                    </div>
+                        }
+                        </div>
+                    </Authorized>
+                </AuthorizeView>
+        }
+    </div>
+</div>
+
+<style>
+    /* Estilos para alinear los tabs a la estética oscura de CineTracker */
+    .custom-tabs .nav-link {
+        color: #aaa;
+        border-radius: 8px;
+        margin-right: 8px;
+        transition: all 0.2s ease;
+        background: transparent;
+        border: 1px solid transparent;
+    }
+    .custom-tabs .nav-link:hover {
+        color: #fff;
+        background-color: rgba(255,255,255,0.05);
+    }
+    .custom-tabs .nav-link.active {
+        background-color: #2b2b2b;
+        color: #fff;
+        border: 1px solid #444;
+    }
+    /* El tab de admin brilla en amarillo cuando está activo */
+    .custom-tabs .nav-link#admin-tab.active {
+        background-color: rgba(255, 193, 7, 0.1);
+        border-color: #ffc107;
+        color: #ffc107 !important;
+    }
+
+    /* Animación suave al cambiar de pestaña */
+    .animacion-fade {
+        animation: fadeIn 0.3s ease-in;
+    }
+    @@keyframes fadeIn {
+        from { opacity: 0; transform: translateY(5px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+
+    .card-hover { transition: transform 0.2s; }
+    .card-hover:hover { transform: translateY(-3px); }
+</style>
+
+@code {
+    private string pestañaActiva = "diario"; // Controla qué pestaña se ve
+    private List<MovieRequest> solicitudes = new();
+    private bool cargandoSolicitudes = true;
+    private bool esAdmin = false;
+    private List<Review> misResenas = new(); // Asegurate de tener el using de tu modelo
+    private bool cargandoResenas = true;
+    private List<UserMap> misMapas = new();
+    private bool cargandoMapas = true;
+
+
+    protected override async Task OnInitializedAsync()
+    {
+        var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+        esAdmin = authState.User.IsInRole("Admin");
+        await CargarMisResenas();
+        await CargarMisMapas();
+
+        if (esAdmin)
+        {
+            await CargarSolicitudes();
+        }
+    }
+
+
+    private async Task CargarMisResenas()
+    {
+        cargandoResenas = true;
+        try
+        {
+            misResenas = await Http.GetFromJsonAsync<List<Review>>("api/Reviews/my-recent-reviews") ?? new();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error al cargar reseñas: {ex.Message}");
+        }
+        finally
+        {
+            cargandoResenas = false;
+        }
+    }
+
+    private async Task CargarMisMapas()
+    {
+        cargandoMapas = true;
+        try
+        {
+            // Ajustá la URL según cómo hayas nombrado tu controlador
+            misMapas = await Http.GetFromJsonAsync<List<UserMap>>("api/Maps/my-recent-maps") ?? new();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error al cargar mapas: {ex.Message}");
+        }
+        finally
+        {
+            cargandoMapas = false;
+        }
+    }
+
+    private async Task CargarSolicitudes()
+    {
+        cargandoSolicitudes = true;
+        try
+        {
+            solicitudes = await Http.GetFromJsonAsync<List<MovieRequest>>("api/Movies/requests") ?? new();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error al cargar solicitudes: {ex.Message}");
+        }
+        finally
+        {
+            cargandoSolicitudes = false;
+        }
+    }
+
+    private async Task AprobarSolicitud(MovieRequest req)
+    {
+        try
+        {
+            var response = await Http.PostAsync($"api/Movies/approve-request/{req.Id}", null);
+
+            if (response.IsSuccessStatusCode)
+            {
+                await CargarSolicitudes();
+            }
+            else
+            {
+                var errorMsg = await response.Content.ReadAsStringAsync();
+                Console.WriteLine($"Error al aprobar: {errorMsg}");
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Excepción al aprobar: {ex.Message}");
+        }
+    }
+}
