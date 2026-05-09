@@ -13,9 +13,8 @@ namespace CineTraker.Data
         public DbSet<Movie> Movies { get; set; }
         public DbSet<Review> Reviews { get; set; }
         public DbSet<StreamingSource> StreamingSources { get; set; }
-
         public DbSet<UserMap> UserMaps { get; set; }
-
+        public DbSet<MovieRequest> MovieRequests { get; set; }
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             base.OnModelCreating(modelBuilder);
