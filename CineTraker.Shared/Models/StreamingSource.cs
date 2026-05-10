@@ -20,7 +20,7 @@ namespace CineTraker.Shared
             [JsonIgnore]
             public List<Movie> Movies { get; set; } = new();
 
-    }
+        }
 
 
     }
