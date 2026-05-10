@@ -78,6 +78,3 @@ El mapa de recomendaciones es un motor dinámico. Al puntuar una película con m
 
 **Luca Conti** - Estudiante de 5to año de Ingeniería en Sistemas de Información.
 **UTN Facultad Regional Rosario (UTN-FRRo)**
-
-
-¡Con esto ya podés hacer el último push del día y dejar el repo impecable!
