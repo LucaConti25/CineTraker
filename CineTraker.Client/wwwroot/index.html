@@ -281,6 +281,21 @@
 
             configurarEventosClic();
             bloquearNodosPadres();
+
+            const arrayNodos = nodes.get();
+            if (arrayNodos.length > 0) {
+                const ultimoNodoId = arrayNodos[arrayNodos.length - 1].id;
+
+                setTimeout(() => {
+                    network.focus(ultimoNodoId, {
+                        scale: 1.2, 
+                        animation: {
+                            duration: 1200, 
+                            easingFunction: "easeInOutQuad"
+                        }
+                    });
+                }, 100);
+            }
         };
 
 
