@@ -70,17 +70,14 @@ El sistema implementa un `DelegatingHandler` en el cliente Blazor para intercept
 El mapa de recomendaciones es un motor dinámico. Al puntuar una película con más de 1 estrella, el backend calcula nuevas relaciones basadas en metadatos compartidos y expande el grafo. Cada snapshot se guarda en formato JSON, permitiendo una experiencia de exploración persistente y asincrónica.
 
 ## 🚧 Roadmap
-
-* [ ] Registro público de nuevos usuarios.
 * [ ] Despliegue productivo en **Azure App Service**.
 * [ ] Soporte multiregión para disponibilidad de streaming.
 * [ ] Estadísticas visuales de consumo cinematográfico por usuario.
 
 ## 👤 Autor
 
-**Luca** - Estudiante de 5to año de Ingeniería en Sistemas de Información.
+**Luca Conti** - Estudiante de 5to año de Ingeniería en Sistemas de Información.
 **UTN Facultad Regional Rosario (UTN-FRRo)**
 
-3. **Identidad Académica:** Refuerza tu pertenencia a la UTN-FRRo, algo muy valorado en el polo tecnológico de Rosario.
 
 ¡Con esto ya podés hacer el último push del día y dejar el repo impecable!
