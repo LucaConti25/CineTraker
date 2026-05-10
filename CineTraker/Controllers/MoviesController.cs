@@ -88,7 +88,25 @@ public class MoviesController : ControllerBase
         return movie;
     }
 
+    [Authorize(Roles = "Admin")]
+    [HttpPost("reject-request/{id}")]
+    public async Task<IActionResult> RejectRequest(int id)
+    {
+        var request = await _context.MovieRequests.FindAsync(id);
+        if (request == null) return NotFound("La solicitud no existe.");
 
+        var solicitudesRelacionadas = await _context.MovieRequests
+            .Where(r => r.ImdbID == request.ImdbID && r.Status == RequestStatus.Pending)
+            .ToListAsync();
+
+        foreach (var req in solicitudesRelacionadas)
+        {
+            req.Status = RequestStatus.Rejected;
+        }
+
+        await _context.SaveChangesAsync();
+        return Ok("Solicitudes rechazadas y archivadas.");
+    }
 
     [HttpPost]
     public async Task<ActionResult<Movie>> PostMovie(Movie movie)

@@ -3,6 +3,7 @@
 @using CineTraker.Shared.Models
 @using Microsoft.AspNetCore.Components.Authorization
 @inject HttpClient Http
+@inject NavigationManager Nav
 @inject AuthenticationStateProvider AuthStateProvider
 @inject IJSRuntime JS
 <PageTitle>CineTraker - Inicio</PageTitle>
@@ -890,6 +891,7 @@
 
                 mostrarFeedback = false;
                 textoBusqueda = "";
+                Nav.NavigateTo("/", forceLoad: true);
             }
             else
             {
