@@ -169,12 +169,12 @@
                                                                 <h6 class="text-light fw-bold mb-0 text-truncate" title="@req.Title">@req.Title</h6>
                                                                 <small class="text-muted">@req.Year</small>
                                                             </div>
-                                                            <div class="mt-2">
-                                                                <small class="d-block text-info mb-2" style="font-size: 0.75rem;">
-                                                                    <i class="bi bi-person-fill"></i> @req.RequestedByUsername
-                                                                </small>
+                                                            <div class="d-flex gap-2 mt-3">
                                                                 <button class="btn btn-sm btn-success w-100 fw-bold" @onclick="() => AprobarSolicitud(req)">
                                                                     <i class="bi bi-check-circle"></i> Aprobar
+                                                                </button>
+                                                                <button class="btn btn-sm btn-outline-danger w-100 fw-bold" @onclick="() => RechazarSolicitud(req)">
+                                                                    <i class="bi bi-x-circle me-1"></i> Rechazar
                                                                 </button>
                                                             </div>
                                                         </div>
@@ -327,4 +327,25 @@
             Console.WriteLine($"Excepción al aprobar: {ex.Message}");
         }
     }
+
+	private async Task RechazarSolicitud(MovieRequest req)
+	{
+		try
+		{
+			var response = await Http.PostAsync($"api/Movies/reject-request/{req.Id}", null);
+			if (response.IsSuccessStatusCode)
+			{
+				await CargarSolicitudes();
+			}
+			else
+			{
+				var errorMsg = await response.Content.ReadAsStringAsync();
+				Console.WriteLine($"Error al rechazar: {errorMsg}");
+			}
+		}
+		catch (Exception ex)
+		{
+			Console.WriteLine($"Excepción al rechazar: {ex.Message}");
+		}
+	}
 }
