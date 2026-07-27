@@ -1,4 +1,4 @@
-﻿@page "/mapa/{MapId:int}"
+@page "/mapa/{MapId:int}"
 @using CineTraker.Shared
 @using CineTraker.Shared.Models
 @inject HttpClient Http
@@ -9,48 +9,68 @@
 
 <AuthorizeView>
     <Authorized>
-        <div class="container-fluid bg-dark text-white p-4" style="height: 90vh; position: relative;">
-            <h3>@mapName</h3>
+        <div class="map-immersive-container text-white">
+            <!-- Header Flotante -->
+            <div class="glass-floating-header d-flex justify-content-between align-items-center p-3">
+                <button class="btn btn-outline-light rounded-pill px-4 shadow-sm" @onclick='() => Nav.NavigateTo("mis-mapas")'>
+                    <i class="bi bi-arrow-left"></i> Volver
+                </button>
+                <h3 class="mb-0 fw-bold text-center flex-grow-1" style="text-shadow: 0 2px 4px rgba(0,0,0,0.8);">@mapName</h3>
+                
+                <div style="width: 120px; text-align: right;">
+                    @if (estaGuardando)
+                    {
+                        <span class="badge bg-success animate-pulse py-2 px-3 rounded-pill shadow">
+                            <i class="bi bi-cloud-check"></i>
+                        </span>
+                    }
+                </div>
+            </div>
 
-            @if (estaGuardando)
-            {
-                <span class="badge bg-success ms-3 animate-pulse">
-                    <i class="bi bi-cloud-check"></i> Guardando...
-                </span>
-            }
+            <!-- Contenedor del Grafo -->
+            <div id="graph-container" style="width: 100%; height: 100%; background: radial-gradient(circle at center, #111 0%, #000 100%);"></div>
 
-            <div id="graph-container" style="width: 100%; height: 80%; border: 1px solid #0078d4; border-radius: 15px;"></div>
+            <!-- Tooltip Customizado Oculto -->
+            <div id="custom-tooltip" class="glass-tooltip" style="display: none; position: absolute; pointer-events: none; z-index: 1100;"></div>
+
+            <!-- Botón Centrar -->
+            <button class="btn btn-outline-light rounded-circle shadow-lg glass-button" 
+                    style="position: absolute; bottom: 2rem; right: 2rem; z-index: 100; width: 60px; height: 60px; font-size: 1.5rem;" 
+                    @onclick="CentrarMapa" title="Centrar mapa">
+                <i class="bi bi-arrows-collapse"></i>
+            </button>
 
             @if (mostrarModal)
             {
                 <div class="modal-overlay">
-                    <div class="modal-content bg-secondary p-3 rounded shadow">
-                        <h4>Puntuar: @peliculaSeleccionada?.Title</h4>
-
-                        <div class="stars my-3">
+                    <div class="modal-content glass-panel p-4 shadow-lg border-0 text-white">
+                        <div class="d-flex justify-content-between align-items-start mb-3">
+                            <h4 class="fw-bold text-warning mb-0 text-start">@peliculaSeleccionada?.Title</h4>
+                            <button class="btn btn-sm btn-outline-light border-0" @onclick="() => mostrarModal = false"><i class="bi bi-x-lg"></i></button>
+                        </div>
+                        
+                        <div class="d-flex justify-content-center stars mb-4 mt-2">
                             @for (int i = 1; i <= 5; i++)
                             {
                                 int starIndex = i;
-                                <i class="bi @(puntuacionTemp >= i ? "bi-star-fill" : "bi-star")" 
-                                style="cursor:pointer; color: gold; font-size: 1.5rem;"
+                                <i class="bi @(puntuacionTemp >= i ? "bi-star-fill text-warning" : "bi-star text-secondary") mx-1" 
+                                style="cursor:pointer; font-size: 2.2rem; transition: transform 0.2s;"
+                                onmouseover="this.style.transform='scale(1.2)'" onmouseout="this.style.transform='scale(1)'"
                                 @onclick="() => puntuacionTemp = starIndex"></i>
                             }
                         </div>
 
-                        <div class="mb-3 text-start">
-                            <label class="form-label text-white">Reseña para el diario (Opcional):</label>
-                            <textarea class="form-control bg-dark text-white border-primary" 
-                            rows="3" 
+                        <div class="mb-4 text-start">
+                            <label class="form-label text-light small fw-bold">Reseña (Opcional):</label>
+                            <textarea class="form-control bg-dark text-white border-secondary shadow-inner" 
+                            rows="2" 
                             @bind="comentarioTemp" 
-                            placeholder="¿Qué te pareció?"></textarea>
+                            placeholder="¿Qué te pareció este descubrimiento?"></textarea>
                         </div>
 
-                        <div class="d-flex justify-content-between">
-                            <button class="btn btn-danger" @onclick="() => mostrarModal = false">Cancelar</button>
-                            <button class="btn btn-success" @onclick="GuardarYExpandir" disabled="@(puntuacionTemp == 0)">
-                                Guardar y Explorar
-                            </button>
-                        </div>
+                        <button class="btn btn-warning w-100 fw-bold shadow-sm" @onclick="GuardarYExpandir" disabled="@(puntuacionTemp == 0)">
+                            <i class="bi bi-rocket-takeoff"></i> Guardar y Explorar
+                        </button>
                     </div>
                 </div>
             }
@@ -220,13 +240,57 @@
         await AutoguardarMapa();
     }
 
+    private async Task CentrarMapa()
+    {
+        await JS.InvokeVoidAsync("centrarMapa");
+    }
+
     public void Dispose() => objRef?.Dispose();
 }
 
 <style>
+    .map-immersive-container {
+        position: fixed;
+        top: 0; left: 0; width: 100vw; height: 100vh;
+        z-index: 1050; /* Para sobreponerse al menú lateral de Blazor */
+        background-color: #000;
+    }
+    .glass-floating-header {
+        position: absolute; top: 0; left: 0; width: 100%; z-index: 100;
+        background: linear-gradient(to bottom, rgba(0,0,0,0.8) 0%, rgba(0,0,0,0) 100%);
+        pointer-events: none; /* Para no bloquear clicks en el grafo */
+    }
+    .glass-floating-header > * {
+        pointer-events: auto; /* Reactivar clicks para los botones */
+    }
+    .glass-tooltip {
+        padding: 10px 15px;
+        background: rgba(20, 20, 20, 0.85);
+        backdrop-filter: blur(10px);
+        border: 1px solid rgba(255, 255, 255, 0.2);
+        border-radius: 8px;
+        color: white;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.5);
+        transition: opacity 0.2s ease-in-out;
+    }
+    .glass-button {
+        background: rgba(30, 30, 30, 0.6) !important;
+        backdrop-filter: blur(8px);
+        border-color: rgba(255,255,255,0.3) !important;
+    }
     .modal-overlay {
         position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-        background: rgba(0,0,0,0.7); display: flex; align-items: center; justify-content: center; z-index: 1000;
+        background: rgba(0,0,0,0.6); backdrop-filter: blur(8px); 
+        display: flex; align-items: center; justify-content: center; z-index: 1200;
     }
-    .modal-content { width: 300px; text-align: center; border: 1px solid #0078d4; }
+    .glass-panel { 
+        width: 90%; max-width: 420px; text-align: center; 
+        background: rgba(30, 30, 30, 0.7);
+        backdrop-filter: blur(20px);
+        border: 1px solid rgba(255, 255, 255, 0.15) !important;
+        border-radius: 20px;
+    }
+    .shadow-inner {
+        box-shadow: inset 0 2px 5px rgba(0,0,0,0.5);
+    }
 </style>

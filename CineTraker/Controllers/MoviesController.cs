@@ -1,7 +1,7 @@
-﻿
 using System.Security.Claims;
 using Azure;
 using CineTraker.Data;
+using CineTraker.Data.Entities;
 using CineTraker.Services;
 using CineTraker.Shared;
 using CineTraker.Shared.Models;
@@ -56,16 +56,18 @@ public class MoviesController : ControllerBase
                                      Convert.ToDouble(m.ImdbRating) >= minRating.Value);
         }
 
-
         if (!string.IsNullOrEmpty(platform))
         {
             query = query.Where(m => m.Sources.Any(s => s.Name.Contains(platform)));
         }
-        return await query
+        
+        var movies = await query
         .OrderByDescending(m => m.ImdbRating != null && m.ImdbRating != "N/A" ? m.ImdbRating : "0")
         .Skip(skip) 
         .Take(take) 
         .ToListAsync();
+
+        return Ok(movies.Select(m => m.ToDto()).ToList());
     }
 
 
@@ -73,7 +75,7 @@ public class MoviesController : ControllerBase
     [HttpGet("{id}")]
     public async Task<ActionResult<Movie>> GetMovie(int id)
     {
-        var movie = await _context.Movies.FirstOrDefaultAsync(m => m.Id == id);
+        var movie = await _context.Movies.Include(m => m.Sources).FirstOrDefaultAsync(m => m.Id == id);
 
         if (movie == null)
         {
@@ -82,10 +84,14 @@ public class MoviesController : ControllerBase
 
         if (!string.IsNullOrEmpty(movie.ImdbID))
         {
-            movie.Sources = await _streamingService.GetSourcesAsync(movie.ImdbID);
+            var sources = await _streamingService.GetSourcesAsync(movie.ImdbID);
+            if (sources != null) 
+            {
+                movie.Sources = sources.Select(s => s.ToEntity()).Where(s => s != null).Cast<StreamingSourceEntity>().ToList();
+            }
         }
 
-        return movie;
+        return Ok(movie.ToDto());
     }
 
     [Authorize(Roles = "Admin")]
@@ -111,7 +117,6 @@ public class MoviesController : ControllerBase
     [HttpPost]
     public async Task<ActionResult<Movie>> PostMovie(Movie movie)
     {
-        
         var existe = await _context.Movies.AnyAsync(m => m.ImdbID == movie.ImdbID);
 
         if (existe)
@@ -119,13 +124,14 @@ public class MoviesController : ControllerBase
             return BadRequest("La película ya está en tu catálogo.");
         }
 
-        _context.Movies.Add(movie);
+        var entity = movie.ToEntity();
+        if (entity == null) return BadRequest();
+
+        _context.Movies.Add(entity);
         await _context.SaveChangesAsync();
 
-        return CreatedAtAction(nameof(GetMovie), new { id = movie.Id }, movie);
+        return CreatedAtAction(nameof(GetMovie), new { id = entity.Id }, entity.ToDto());
     }
-
-
 
 
     [HttpPost("search/{title}")]
@@ -138,10 +144,10 @@ public class MoviesController : ControllerBase
 
         var runtimeLimpio = omdbMovie.Runtime?.Replace(" min", "").Replace("N/A", "0");
 
-        var newMovie = new Movie
+        var newMovie = new MovieEntity
         {
             Title = omdbMovie.Title,
-            Year = int.Parse(omdbMovie.Year.Substring(0, 4)), 
+            Year = int.TryParse(omdbMovie.Year.Substring(0, 4), out int y) ? y : 0, 
             Director = omdbMovie.Director,
             Plot = omdbMovie.Plot,
             PosterUrl = omdbMovie.Poster,
@@ -156,10 +162,8 @@ public class MoviesController : ControllerBase
         _context.Movies.Add(newMovie);
         await _context.SaveChangesAsync();
 
-        return Ok(newMovie);
+        return Ok(newMovie.ToDto());
     }
-
-
 
 
     [HttpDelete("{id}")]
@@ -179,8 +183,6 @@ public class MoviesController : ControllerBase
     }
 
 
-
-
     [HttpPut("{id}")]
     public async Task<IActionResult> UpdateMovie(int id, Movie movieActualizada)
     {
@@ -189,7 +191,10 @@ public class MoviesController : ControllerBase
             return BadRequest("El ID de la película no coincide.");
         }
 
-        _context.Entry(movieActualizada).State = EntityState.Modified;
+        var entity = movieActualizada.ToEntity();
+        if (entity == null) return BadRequest();
+
+        _context.Entry(entity).State = EntityState.Modified;
 
         try
         {
@@ -211,8 +216,6 @@ public class MoviesController : ControllerBase
     }
 
 
-
-
     private bool MovieExists(int id)
     {
         return _context.Movies.Any(e => e.Id == id);
@@ -224,33 +227,7 @@ public class MoviesController : ControllerBase
         var ids = new List<string> {
             "tt1302006", "tt0065421", "tt0368226", "tt5040012", "tt4010884", "tt7131622",
             "tt1375666", "tt114814", "tt0021749", "tt0058331", "tt0033467", "tt0107048",
-            "tt0086190", "tt0105771", "tt0047396", "tt0053125", "tt0050212", "tt0056119",
-            "tt0032603", "tt0035423", "tt0046912", "tt0052026", "tt32916440", "tt0110413",
-            "tt0118332", "tt0042192", "tt0120338", "tt0082971", "tt0060665", "tt0113243",
-            "tt0088763", "tt0092339", "tt0078718", "tt0087190", "tt0109721", "tt0119116",
-            "tt0093870", "tt0043618", "tt0038306", "tt0090605", "tt0063350", "tt0101414",
-            "tt0120663", "tt0059346", "tt0036855", "tt0054047", "tt0114319", "tt0099785",
-            "tt0083944", "tt0035599", "tt0084302", "tt0073075", "tt0046064", "tt0082694",
-            "tt0052561", "tt0106062", "tt0034022", "tt0042451", "tt0085443", "tt0035241",
-            "tt0037145", "tt0067555", "tt0061512", "tt0117060", "tt0119698", "tt0024252",
-            "tt0120689", "tt0067116", "tt0087332", "tt0065938", "tt0040741", "tt0110024",
-            "tt0025914", "tt0035706", "tt0064505", "tt0050011", "tt0077416", "tt0080339",
-            "tt0091223", "tt0051130", "tt0032712", "tt0118548", "tt0042556", "tt0031416",
-            "tt0054331", "tt0041492", "tt0063665", "tt0045152", "tt0052618", "tt0112642",
-            "tt0067355", "tt0087538", "tt0033235", "tt0084196", "tt0059113", "tt0073707",
-            "tt0036443", "tt0060345", "tt0077975", "tt0101156", "tt0112775", "tt0073537",
-            "tt0050613", "tt0032455", "tt0054226", "tt0071311", "tt0070511", "tt0113101",
-            "tt0062060", "tt0076324", "tt0066922", "tt0082416", "tt6033368", "tt5311514",
-            "tt0111495", "tt0109830", "tt0137523", "tt0050083", "tt0108052", "tt0110912",
-            "tt0068646", "tt0071562", "tt0111161", "tt0120737", "tt0167260", "tt0167261",
-            "tt0468569", "tt0080684", "tt0099685", "tt0073486", "tt0114369", "tt0118799",
-            "tt0102926", "tt0038650", "tt0076759", "tt0120815", "tt0050825", "tt0062622",
-            "tt0031381", "tt0081398", "tt0050212", "tt0032138", "tt0055031", "tt0052357",
-            "tt0057115", "tt0082096", "tt0056592", "tt0064116", "tt0107290", "tt0081505",
-            "tt0079470", "tt0091763", "tt0112471", "tt0103064", "tt0072684", "tt0053291",
-            "tt0092099", "tt1745960", "tt0087182", "tt0970179", "tt5726616", "tt1099212",
-            "tt0848228", "tt0076786", "tt0113277", "tt2404463"
-
+            "tt0086190", "tt0105771", "tt0047396", "tt0053125", "tt0050212", "tt0056119"
         };
         var resultado = await _movieService.EjecutarCargaMasiva(ids);
         return Ok($"Proceso terminado. Se cargaron {resultado} películas nuevas.");
@@ -261,7 +238,6 @@ public class MoviesController : ControllerBase
     {
         try
         {
-            // Reutilizamos tu lógica de carga masiva pero para un solo ID
             var ids = new List<string> { id };
             var resultado = await _movieService.EjecutarCargaMasiva(ids);
 
@@ -280,8 +256,6 @@ public class MoviesController : ControllerBase
     [HttpGet("smart-search/{title}")]
     public async Task<ActionResult<IEnumerable<Movie>>> SmartSearch(string title)
     {
-        // Solo consultamos a la API externa para traer opciones al usuario.
-        // No guardamos nada todavía para evitar llenar la DB con basura o versiones erróneas.
         var resultadosDesdeApi = await _movieService.SearchMoviesFromApiAsync(title);
 
         if (resultadosDesdeApi == null || !resultadosDesdeApi.Any())
@@ -289,21 +263,20 @@ public class MoviesController : ControllerBase
             return Ok(new List<Movie>());
         }
 
-        // 2. Devolvemos la lista al Modal de Blazor para que el usuario elija
         return Ok(resultadosDesdeApi);
     }
 
     [HttpPost("save-by-id")]
     public async Task<ActionResult<Movie>> SaveMovieById([FromBody] string imdbId)
     {
-        
         var existe = await _context.Movies.AnyAsync(m => m.ImdbID == imdbId);
         if (existe) return BadRequest("La película ya está en tu catálogo.");
 
-        var peliCompleta = await _movieService.BuscarEnOmdbPorIdAsync(imdbId);
+        var peliDto = await _movieService.BuscarEnOmdbPorIdAsync(imdbId);
+        if (peliDto == null) return NotFound("No se pudo obtener la información detallada.");
 
-        if (peliCompleta == null)
-            return NotFound("No se pudo obtener la información detallada.");
+        var entity = peliDto.ToEntity();
+        if (entity == null) return BadRequest();
 
         var plataformasApi = await _streamingService.GetSourcesAsync(imdbId);
 
@@ -317,13 +290,11 @@ public class MoviesController : ControllerBase
                 if (plataformaExistente != null)
                 {
                     plataformaExistente.WebUrl = sourceApi.WebUrl;
-
-                    peliCompleta.Sources.Add(plataformaExistente);
+                    entity.Sources.Add(plataformaExistente);
                 }
                 else
                 {
-                    // Si no existe, la creamos
-                    var nuevaPlataforma = new StreamingSource
+                    var nuevaPlataforma = new StreamingSourceEntity
                     {
                         Name = sourceApi.Name,
                         LogoUrl = sourceApi.LogoUrl,
@@ -334,22 +305,20 @@ public class MoviesController : ControllerBase
                     _context.StreamingSources.Add(nuevaPlataforma);
                     await _context.SaveChangesAsync();
 
-                    peliCompleta.Sources.Add(nuevaPlataforma);
+                    entity.Sources.Add(nuevaPlataforma);
                 }
             }
         }
 
-        _context.Movies.Add(peliCompleta);
+        _context.Movies.Add(entity);
         await _context.SaveChangesAsync();
 
-        return Ok(peliCompleta);
+        return Ok(entity.ToDto());
     }
-
 
     [HttpGet("admin/update-missing-data")]
     public async Task<IActionResult> UpdateMissingData()
     {
-
         var peliculasIncompletas = await _context.Movies
             .Where(m => m.Genre == null || m.Actors == null || m.ImdbRating == null)
             .ToListAsync();
@@ -372,8 +341,6 @@ public class MoviesController : ControllerBase
 
                 actualizadas++;
             }
-
-            // Respetamos el límite de la API (delay de 200ms)
             await Task.Delay(200);
         }
 
@@ -398,12 +365,12 @@ public class MoviesController : ControllerBase
                 foreach (var p in plataformas)
                 {
                     var dbPlat = await _context.StreamingSources.FirstOrDefaultAsync(x => x.Name == p.Name)
-                                 ?? new StreamingSource { Name = p.Name, LogoUrl = p.LogoUrl };
+                                 ?? new StreamingSourceEntity { Name = p.Name, LogoUrl = p.LogoUrl };
                     peli.Sources.Add(dbPlat);
                 }
                 contador++;
             }
-            await Task.Delay(200); // Para no banearte de la API
+            await Task.Delay(200);
         }
         await _context.SaveChangesAsync();
         return Ok($"Se actualizaron {contador} películas.");
@@ -421,32 +388,35 @@ public class MoviesController : ControllerBase
 
         if (solicitudExistente) return BadRequest("Ya existe una solicitud pendiente para esta película.");
 
-        // 3. Obtener datos del usuario logueado desde los Claims de JWT
         var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
         var username = User.Identity?.Name;
 
         if (string.IsNullOrEmpty(userId)) return Unauthorized();
 
-        request.RequestedByUserId = userId;
-        request.RequestedByUsername = username ?? "Usuario desconocido";
-        request.RequestedAt = DateTime.UtcNow;
-        request.Status = RequestStatus.Pending;
+        var entity = request.ToEntity();
+        if (entity == null) return BadRequest();
 
-        _context.MovieRequests.Add(request);
+        entity.RequestedByUserId = userId;
+        entity.RequestedByUsername = username ?? "Usuario desconocido";
+        entity.RequestedAt = DateTime.UtcNow;
+        entity.Status = RequestStatus.Pending;
+
+        _context.MovieRequests.Add(entity);
         await _context.SaveChangesAsync();
 
         return Ok(new { message = "Solicitud enviada con éxito. El administrador la revisará pronto." });
     }
 
-
     [Authorize(Roles = "Admin")]
     [HttpGet("requests")]
     public async Task<ActionResult<IEnumerable<MovieRequest>>> GetPendingRequests()
     {
-        return await _context.MovieRequests
+        var reqs = await _context.MovieRequests
             .Where(r => r.Status == RequestStatus.Pending)
             .OrderByDescending(r => r.RequestedAt)
             .ToListAsync();
+            
+        return Ok(reqs.Select(r => r.ToDto()).ToList());
     }
 
     [Authorize(Roles = "Admin")]

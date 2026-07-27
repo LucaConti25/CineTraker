@@ -1,10 +1,11 @@
 using System.ComponentModel.DataAnnotations;
-using System.Text.Json.Serialization;
+using System.ComponentModel.DataAnnotations.Schema;
 
-namespace CineTraker.Shared
+namespace CineTraker.Data.Entities
 {
-    public class Review
+    public class ReviewEntity
     {
+        [Key]
         public int Id { get; set; }
 
         [Range(1, 5)]
@@ -13,7 +14,7 @@ namespace CineTraker.Shared
         public DateTime CreatedAt { get; set; } = DateTime.Now;
         public int MovieId { get; set; }
 
-        public Movie? Movie { get; set; }
+        public MovieEntity? Movie { get; set; }
         
         public string? UserId { get; set; }
     }

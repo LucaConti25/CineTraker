@@ -1,9 +1,11 @@
 using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations.Schema;
 
-namespace CineTraker.Shared
+namespace CineTraker.Data.Entities
 {
-    public class Movie
+    public class MovieEntity
     {
+        [Key]
         public int Id { get; set; }
 
         [Required]
@@ -17,28 +19,8 @@ namespace CineTraker.Shared
         public int Runtime { get; set; }
         public string? Actors { get; set; }
         public string? Rated { get; set; }
-        // Este es el vector de la IA. EF Core 8+ lo guarda como JSON automáticamente en SQL Server.
         public float[]? PlotEmbedding { get; set; }
-
         public string? ImdbRating { get; set; }
-
-        public string SafePosterUrl
-        {
-            get
-            {
-                if (string.IsNullOrWhiteSpace(PosterUrl) || PosterUrl == "N/A")
-                {
-
-                    return "https://placehold.co/300x450?text=Sin+Poster";
-
-                }
-
-                return PosterUrl;
-            }
-        }
-
-        public List<StreamingSource>? Sources { get; set; } = new List<StreamingSource>();
-
-
+        public List<StreamingSourceEntity>? Sources { get; set; } = new List<StreamingSourceEntity>();
     }
 }

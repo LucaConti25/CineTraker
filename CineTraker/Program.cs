@@ -45,7 +45,7 @@ namespace CineTraker
                     Scheme = "Bearer",
                     BearerFormat = "JWT",
                     In = ParameterLocation.Header,
-                    Description = "Pegá tu token JWT acá: Bearer {tu_token}"
+                    Description = "Pegï¿½ tu token JWT acï¿½: Bearer {tu_token}"
                 });
 
                 c.AddSecurityRequirement(new OpenApiSecurityRequirement
@@ -156,8 +156,9 @@ namespace CineTraker
                         EmailConfirmed = true
                     };
 
-                    // Creamos el usuario con una contraseña temporal
-                    var result = await userManager.CreateAsync(user, "Admin123!");
+                    // Creamos el usuario con una contrasea temporal
+                    var adminPassword = app.Configuration["AdminSettings:Password"] ?? "Admin123!";
+                    var result = await userManager.CreateAsync(user, adminPassword);
 
                     if (result.Succeeded)
                     {

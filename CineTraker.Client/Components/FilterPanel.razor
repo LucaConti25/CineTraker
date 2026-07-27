@@ -1,0 +1,134 @@
+@using CineTraker.Shared
+
+<div class="d-flex flex-wrap align-items-center gap-2 mb-5 filters-container">
+    @* Década *@
+    <div class="custom-dropdown">
+        <button class="pill-dropdown @(FiltrosDecadas.Any(f => f.Seleccionado) ? "active" : "")" 
+                type="button" @onclick="ToggleDecada" @onfocusout="CerrarDecada">
+            @{
+                var seleccionada = FiltrosDecadas.FirstOrDefault(f => f.Seleccionado);
+                if (seleccionada != null) { <span class="fw-bold">@seleccionada.Etiqueta</span> }
+                else { <span>DÉCADA</span><span class="ms-2 text-muted">---</span> }
+            }
+            <i class="bi bi-chevron-down ms-2 small"></i>
+        </button>
+        <ul class="dropdown-menu dropdown-menu-dark custom-dropdown-menu @(_mostrarDecada ? "show" : "")">
+            @foreach (var decada in FiltrosDecadas)
+            {
+                <li>
+                    <button class="dropdown-item @(decada.Seleccionado ? "active-item" : "")" 
+                            @onmousedown="() => SeleccionarDecada(decada)">
+                        @decada.Etiqueta
+                    </button>
+                </li>
+            }
+        </ul>
+    </div>
+
+    @* Género *@
+    <div class="custom-dropdown">
+        <button class="pill-dropdown @(!string.IsNullOrEmpty(GeneroSeleccionado) ? "active" : "")"
+                type="button" @onclick="ToggleGenero" @onfocusout="CerrarGenero">
+            @if (!string.IsNullOrEmpty(GeneroSeleccionado)) { <span class="fw-bold">@GeneroSeleccionado.ToUpper()</span> }
+            else { <span>GÉNERO</span><span class="ms-2 text-muted">---</span> }
+            <i class="bi bi-chevron-down ms-2 small"></i>
+        </button>
+        <ul class="dropdown-menu dropdown-menu-dark custom-dropdown-menu @(_mostrarGenero ? "show" : "")">
+            <li><button class="dropdown-item" @onmousedown='() => SeleccionarGenero(null)'>TODOS</button></li>
+            @foreach (var g in Generos)
+            {
+                <li><button class="dropdown-item @(GeneroSeleccionado == g ? "active-item" : "")" @onmousedown="() => SeleccionarGenero(g)">@g.ToUpper()</button></li>
+            }
+        </ul>
+    </div>
+
+    @* Rating *@
+    <div class="custom-dropdown">
+        <button class="pill-dropdown @(RatingSeleccionado.HasValue ? "active" : "")"
+                type="button" @onclick="ToggleRating" @onfocusout="CerrarRating">
+            @if (RatingSeleccionado.HasValue) { <span class="fw-bold">⭐ +@RatingSeleccionado.Value.ToString("0.0")</span> }
+            else { <span>PUNTUACIÓN IMDB</span><span class="ms-2 text-muted">---</span> }
+            <i class="bi bi-chevron-down ms-2 small"></i>
+        </button>
+        <ul class="dropdown-menu dropdown-menu-dark custom-dropdown-menu @(_mostrarRating ? "show" : "")">
+            <li><button class="dropdown-item" @onmousedown='() => SeleccionarRating(null)'>CUALQUIERA</button></li>
+            <li><button class="dropdown-item" @onmousedown="() => SeleccionarRating(6.0)">⭐ +6.0</button></li>
+            <li><button class="dropdown-item" @onmousedown="() => SeleccionarRating(7.0)">⭐ +7.0</button></li>
+            <li><button class="dropdown-item" @onmousedown="() => SeleccionarRating(8.0)">🌟 +8.0</button></li>
+            <li><button class="dropdown-item" @onmousedown="() => SeleccionarRating(9.0)">🔥 TOP (+9.0)</button></li>
+        </ul>
+    </div>
+
+    @* Plataforma *@
+    <div class="custom-dropdown">
+        <button class="pill-dropdown @(!string.IsNullOrEmpty(PlataformaSeleccionada) ? "active" : "")"
+                type="button" @onclick="TogglePlataforma" @onfocusout="CerrarPlataforma">
+            @if (!string.IsNullOrEmpty(PlataformaSeleccionada)) { <span class="fw-bold">@PlataformaSeleccionada.ToUpper()</span> }
+            else { <span>PLATAFORMA</span><span class="ms-2 text-muted">---</span> }
+            <i class="bi bi-chevron-down ms-2 small"></i>
+        </button>
+        <ul class="dropdown-menu dropdown-menu-dark custom-dropdown-menu @(_mostrarPlataforma ? "show" : "")">
+            <li><button class="dropdown-item" @onmousedown='() => SeleccionarPlataforma(null)'>CUALQUIERA</button></li>
+            @foreach (var plat in Plataformas)
+            {
+                <li>
+                    <button class="dropdown-item @(PlataformaSeleccionada == plat ? "active-item" : "")" 
+                            @onmousedown="() => SeleccionarPlataforma(plat)">
+                        @plat.ToUpper()
+                    </button>
+                </li>
+            }
+        </ul>
+    </div>
+</div>
+
+@code {
+    [Parameter] public List<FiltroDecada> FiltrosDecadas { get; set; } = new();
+    [Parameter] public List<string> Generos { get; set; } = new();
+    [Parameter] public List<string> Plataformas { get; set; } = new();
+
+    [Parameter] public string? GeneroSeleccionado { get; set; }
+    [Parameter] public double? RatingSeleccionado { get; set; }
+    [Parameter] public string? PlataformaSeleccionada { get; set; }
+
+    [Parameter] public EventCallback<FiltroDecada> OnDecadaChanged { get; set; }
+    [Parameter] public EventCallback<string?> OnGeneroChanged { get; set; }
+    [Parameter] public EventCallback<double?> OnRatingChanged { get; set; }
+    [Parameter] public EventCallback<string?> OnPlataformaChanged { get; set; }
+
+    private bool _mostrarDecada = false;
+    private bool _mostrarGenero = false;
+    private bool _mostrarRating = false;
+    private bool _mostrarPlataforma = false;
+
+    private void ToggleDecada() => _mostrarDecada = !_mostrarDecada;
+    private void ToggleGenero() => _mostrarGenero = !_mostrarGenero;
+    private void ToggleRating() => _mostrarRating = !_mostrarRating;
+    private void TogglePlataforma() => _mostrarPlataforma = !_mostrarPlataforma;
+
+    private async Task CerrarDecada() { await Task.Delay(200); _mostrarDecada = false; StateHasChanged(); }
+    private async Task CerrarGenero() { await Task.Delay(200); _mostrarGenero = false; StateHasChanged(); }
+    private async Task CerrarRating() { await Task.Delay(200); _mostrarRating = false; StateHasChanged(); }
+    private async Task CerrarPlataforma() { await Task.Delay(200); _mostrarPlataforma = false; StateHasChanged(); }
+
+    private async Task SeleccionarDecada(FiltroDecada f)
+    {
+        _mostrarDecada = false;
+        if (OnDecadaChanged.HasDelegate) await OnDecadaChanged.InvokeAsync(f);
+    }
+    private async Task SeleccionarGenero(string? g)
+    {
+        _mostrarGenero = false;
+        if (OnGeneroChanged.HasDelegate) await OnGeneroChanged.InvokeAsync(g);
+    }
+    private async Task SeleccionarRating(double? r)
+    {
+        _mostrarRating = false;
+        if (OnRatingChanged.HasDelegate) await OnRatingChanged.InvokeAsync(r);
+    }
+    private async Task SeleccionarPlataforma(string? p)
+    {
+        _mostrarPlataforma = false;
+        if (OnPlataformaChanged.HasDelegate) await OnPlataformaChanged.InvokeAsync(p);
+    }
+}

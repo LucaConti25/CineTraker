@@ -1,0 +1,130 @@
+@page "/"
+<PageTitle>CineTraker - Dashboard</PageTitle>
+@using Microsoft.AspNetCore.Components.Authorization
+
+<div class="dashboard-container">
+    <div class="text-center mb-5">
+        <h1 class="display-4 fw-bold text-light mb-3">CineTraker</h1>
+        <p class="lead text-muted">Bienvenido a tu centro de control cinemático.</p>
+    </div>
+
+    <div class="row row-cols-1 row-cols-md-2 g-4 max-w-900 mx-auto">
+        
+        <div class="col">
+            <a href="explorar" class="text-decoration-none">
+                <div class="module-card">
+                    <div class="icon-wrapper bg-warning text-dark">
+                        <i class="bi bi-search fs-1"></i>
+                    </div>
+                    <h3 class="text-light mt-3">Explorar Cartelera</h3>
+                    <p class="text-muted">Busca películas, califícalas y descubre nuevas joyas de todo el mundo.</p>
+                </div>
+            </a>
+        </div>
+
+        <AuthorizeView>
+            <Authorized>
+                <div class="col">
+                    <a href="mis-peliculas" class="text-decoration-none">
+                        <div class="module-card">
+                            <div class="icon-wrapper bg-info text-dark">
+                                <i class="bi bi-collection-play fs-1"></i>
+                            </div>
+                            <h3 class="text-light mt-3">Mi Catálogo</h3>
+                            <p class="text-muted">Revisa las películas que has guardado, calificado o marcado para ver después.</p>
+                        </div>
+                    </a>
+                </div>
+                <div class="col">
+                    <a href="mis-mapas" class="text-decoration-none">
+                        <div class="module-card">
+                            <div class="icon-wrapper bg-success text-dark">
+                                <i class="bi bi-map fs-1"></i>
+                            </div>
+                            <h3 class="text-light mt-3">Mis Expediciones</h3>
+                            <p class="text-muted">Visualiza tu recorrido cinemático alrededor del mundo con mapas interactivos.</p>
+                        </div>
+                    </a>
+                </div>
+                <div class="col">
+                    <a href="perfil" class="text-decoration-none">
+                        <div class="module-card">
+                            <div class="icon-wrapper bg-secondary text-light">
+                                <i class="bi bi-person-circle fs-1"></i>
+                            </div>
+                            <h3 class="text-light mt-3">Mi Perfil</h3>
+                            <p class="text-muted">Configura tu cuenta, revisa tus estadísticas y preferencias.</p>
+                        </div>
+                    </a>
+                </div>
+            </Authorized>
+            <NotAuthorized>
+                <div class="col">
+                    <a href="login" class="text-decoration-none">
+                        <div class="module-card">
+                            <div class="icon-wrapper bg-secondary text-light">
+                                <i class="bi bi-person-badge-fill fs-1"></i>
+                            </div>
+                            <h3 class="text-light mt-3">Inicia Sesión</h3>
+                            <p class="text-muted">Accede a tu cuenta para crear mapas interactivos y guardar películas.</p>
+                        </div>
+                    </a>
+                </div>
+            </NotAuthorized>
+        </AuthorizeView>
+
+    </div>
+</div>
+
+<style>
+    body {
+        background-color: #0f0f0f;
+        color: white;
+    }
+    
+    .dashboard-container {
+        padding: 60px 20px;
+        min-height: 100vh;
+        background: radial-gradient(circle at top, rgba(30,30,30,1) 0%, rgba(15,15,15,1) 100%);
+    }
+
+    .max-w-900 {
+        max-width: 900px;
+    }
+
+    .module-card {
+        background: rgba(25, 25, 25, 0.7);
+        border: 1px solid rgba(255, 255, 255, 0.05);
+        backdrop-filter: blur(10px);
+        -webkit-backdrop-filter: blur(10px);
+        border-radius: 20px;
+        padding: 40px 30px;
+        text-align: center;
+        height: 100%;
+        transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        cursor: pointer;
+    }
+
+    .module-card:hover {
+        transform: translateY(-10px);
+        background: rgba(35, 35, 35, 0.9);
+        border-color: rgba(255, 255, 255, 0.2);
+        box-shadow: 0 15px 30px rgba(0,0,0,0.5);
+    }
+
+    .icon-wrapper {
+        width: 80px;
+        height: 80px;
+        border-radius: 50%;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        margin-bottom: 15px;
+        box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+        transition: transform 0.3s ease;
+    }
+
+    .module-card:hover .icon-wrapper {
+        transform: scale(1.1);
+    }
+</style>

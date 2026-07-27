@@ -1,8 +1,9 @@
-﻿using CineTraker.Shared;
+using CineTraker.Shared;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore; 
 using Microsoft.AspNetCore.Identity;
 using CineTraker.Shared.Models;
+using CineTraker.Data.Entities;
 
 namespace CineTraker.Data
 {
@@ -10,24 +11,36 @@ namespace CineTraker.Data
     {
         public AppDbContext(DbContextOptions<AppDbContext> options) : base(options) { }
 
-        public DbSet<Movie> Movies { get; set; }
-        public DbSet<Review> Reviews { get; set; }
-        public DbSet<StreamingSource> StreamingSources { get; set; }
-        public DbSet<UserMap> UserMaps { get; set; }
-        public DbSet<MovieRequest> MovieRequests { get; set; }
+        public DbSet<MovieEntity> Movies { get; set; }
+        public DbSet<ReviewEntity> Reviews { get; set; }
+        public DbSet<StreamingSourceEntity> StreamingSources { get; set; }
+        public DbSet<UserMapEntity> UserMaps { get; set; }
+        public DbSet<MovieRequestEntity> MovieRequests { get; set; }
+        
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             base.OnModelCreating(modelBuilder);
 
-            modelBuilder.Entity<Review>()
-                .HasOne<Movie>(r => r.Movie)
+            modelBuilder.Entity<MovieEntity>().ToTable("Movies");
+            modelBuilder.Entity<ReviewEntity>().ToTable("Reviews");
+            modelBuilder.Entity<StreamingSourceEntity>().ToTable("StreamingSources");
+            modelBuilder.Entity<UserMapEntity>().ToTable("UserMaps");
+            modelBuilder.Entity<MovieRequestEntity>().ToTable("MovieRequests");
+
+            modelBuilder.Entity<MovieEntity>()
+                .HasMany(m => m.Sources)
+                .WithMany(s => s.Movies)
+                .UsingEntity(j => j.ToTable("MovieStreamingSource"));
+
+            modelBuilder.Entity<ReviewEntity>()
+                .HasOne<MovieEntity>(r => r.Movie)
                 .WithMany()
                 .HasForeignKey(r => r.MovieId)
                 .OnDelete(DeleteBehavior.Cascade);
 
-            modelBuilder.Entity<StreamingSource>()
-            .HasIndex(s => s.Name)
-            .IsUnique();
+            modelBuilder.Entity<StreamingSourceEntity>()
+                .HasIndex(s => s.Name)
+                .IsUnique();
         }
     }
 }

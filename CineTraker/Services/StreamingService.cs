@@ -1,4 +1,4 @@
-﻿using CineTraker.Shared;
+using CineTraker.Shared;
 using System.Net.Http.Json;
 using System.Text.Json.Serialization;
 
@@ -7,9 +7,13 @@ namespace CineTraker.Services
     public class StreamingService
     {
         private readonly HttpClient _http;
-        private readonly string _apiKey = "YvqovyOXal4AE9I1jCchCdUNWzk6yn3wr57fAwI5"; 
+        private readonly string _apiKey; 
 
-        public StreamingService(HttpClient http) => _http = http;
+        public StreamingService(HttpClient http, IConfiguration config)
+        {
+            _http = http;
+            _apiKey = config["Watchmode:ApiKey"] ?? throw new InvalidOperationException("Watchmode ApiKey not found");
+        }
 
         public async Task<List<StreamingSource>> GetSourcesAsync(string imdbId)
         {

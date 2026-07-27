@@ -1,4 +1,4 @@
-﻿using CineTraker.Data;
+using CineTraker.Data;
 using CineTraker.Shared;
 using CineTraker.Shared.Models;
 using Microsoft.EntityFrameworkCore;
@@ -94,7 +94,7 @@ namespace CineTraker.Services
                 // Cada 10 películas, impactamos la base de datos para no llenar la RAM
                 if (listaTemporal.Count >= 10)
                 {
-                    _context.Movies.AddRange(listaTemporal);
+                    _context.Movies.AddRange(listaTemporal.Select(m => m.ToEntity()).Where(m => m != null).Cast<CineTraker.Data.Entities.MovieEntity>());
                     await _context.SaveChangesAsync();
                     listaTemporal.Clear();
                 }
@@ -102,7 +102,7 @@ namespace CineTraker.Services
 
             if (listaTemporal.Any())
             {
-                _context.Movies.AddRange(listaTemporal);
+                _context.Movies.AddRange(listaTemporal.Select(m => m.ToEntity()).Where(m => m != null).Cast<CineTraker.Data.Entities.MovieEntity>());
                 await _context.SaveChangesAsync();
             }
             return contador;

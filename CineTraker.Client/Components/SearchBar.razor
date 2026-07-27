@@ -1,0 +1,93 @@
+@using System.Timers
+@using Microsoft.AspNetCore.Components.Authorization
+@implements IDisposable
+
+<div class="search-wrapper mb-3 position-relative">
+    <i class="bi bi-search search-icon text-warning"></i>
+    <input type="text" class="form-control text-light border-secondary custom-search-input" 
+           placeholder="Busca por título o palabra clave..." 
+           @bind="InternalSearchText" 
+           @bind:event="oninput" />
+
+    @if (ShowFallback)
+    {
+        <div class="alert bg-dark border-secondary text-center py-5 my-4 rounded-4 shadow-sm fallback-alert">
+            <i class="bi bi-film text-muted" style="font-size: 3rem;"></i>
+            <h4 class="text-light mt-3">No tenemos "@SearchText" en el radar</h4>
+            <p class="text-muted">Parece que nadie exploró esta película todavía.</p>
+
+            <AuthorizeView>
+                <Authorized>
+                    <button class="btn btn-warning mt-2 fw-bold shadow-sm glow-button" @onclick="TriggerOmdbSearch" disabled="@IsSearchingOmdb">
+                        @if (IsSearchingOmdb)
+                        {
+                            <span class="spinner-border spinner-border-sm text-dark"></span>
+                            <span class="ms-2 text-dark">Rastreando en internet...</span>
+                        }
+                        else
+                        {
+                            <span><i class="bi bi-globe"></i> Buscar e importar desde OMDB</span>
+                        }
+                    </button>
+                </Authorized>
+                <NotAuthorized>
+                    <a href="login" class="btn btn-outline-warning mt-2 glow-button-outline">
+                        Iniciá sesión para importar películas
+                    </a>
+                </NotAuthorized>
+            </AuthorizeView>
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter] public string SearchText { get; set; } = "";
+    [Parameter] public EventCallback<string> OnSearch { get; set; }
+    [Parameter] public bool ShowFallback { get; set; } = false;
+    [Parameter] public bool IsSearchingOmdb { get; set; } = false;
+    [Parameter] public EventCallback OnOmdbSearch { get; set; }
+
+    private Timer? _timer;
+
+    private string _internalSearchText = "";
+    public string InternalSearchText
+    {
+        get => _internalSearchText;
+        set
+        {
+            _internalSearchText = value;
+            SearchText = value;
+            _timer?.Stop();
+            _timer?.Start();
+        }
+    }
+
+    protected override void OnInitialized()
+    {
+        _internalSearchText = SearchText;
+        _timer = new Timer(300);
+        _timer.AutoReset = false;
+        _timer.Elapsed += async (s, e) =>
+        {
+            await InvokeAsync(async () =>
+            {
+                await OnSearch.InvokeAsync(SearchText);
+            });
+        };
+    }
+
+
+
+    private async Task TriggerOmdbSearch()
+    {
+        if (OnOmdbSearch.HasDelegate)
+        {
+            await OnOmdbSearch.InvokeAsync();
+        }
+    }
+    
+    public void Dispose()
+    {
+        _timer?.Dispose();
+    }
+}

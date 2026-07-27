@@ -1,4 +1,5 @@
-﻿using CineTraker.Data;
+using CineTraker.Data;
+using CineTraker.Data.Entities;
 using CineTraker.Shared.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -19,13 +20,16 @@ namespace CineTraker.Controllers
         public async Task<IActionResult> SaveMap([FromBody] UserMap map)
         {
             var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-            map.UserId = userId;
+            var entity = map.ToEntity();
+            if (entity == null) return BadRequest();
+            
+            entity.UserId = userId;
 
-            if (map.Id == 0) _context.UserMaps.Add(map);
-            else _context.Entry(map).State = EntityState.Modified;
+            if (map.Id == 0) _context.UserMaps.Add(entity);
+            else _context.Entry(entity).State = EntityState.Modified;
 
             await _context.SaveChangesAsync();
-            return Ok(map);
+            return Ok(entity.ToDto());
         }
 
         [HttpGet("{id}")]
@@ -38,7 +42,7 @@ namespace CineTraker.Controllers
 
             if (map == null) return NotFound();
 
-            return Ok(map);
+            return Ok(map.ToDto());
         }
 
         
@@ -48,11 +52,13 @@ namespace CineTraker.Controllers
         {
             var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
 
-            return await _context.UserMaps
-                .Include(m => m.SeedMovie) // <--- CLAVE para tener el póster y título
+            var maps = await _context.UserMaps
+                .Include(m => m.SeedMovie) 
                 .Where(m => m.UserId == userId)
                 .OrderByDescending(m => m.CreatedDate)
                 .ToListAsync();
+                
+            return maps.Select(m => m.ToDto()).Where(m => m != null).Cast<UserMap>().ToList();
         }
 
         
@@ -63,7 +69,6 @@ namespace CineTraker.Controllers
             var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
             if (string.IsNullOrEmpty(userId)) return Unauthorized();
 
-            
             var hasReview = await _context.Reviews
                 .AnyAsync(r => r.UserId == userId && r.MovieId == movieId);
 
@@ -72,7 +77,7 @@ namespace CineTraker.Controllers
 
             var movie = await _context.Movies.FindAsync(movieId);
 
-            var newMap = new UserMap
+            var newMap = new UserMapEntity
             {
                 UserId = userId,
                 SeedMovieId = movieId,
@@ -86,7 +91,7 @@ namespace CineTraker.Controllers
             _context.UserMaps.Add(newMap);
             await _context.SaveChangesAsync();
 
-            return Ok(newMap);
+            return Ok(newMap.ToDto());
         }
 
         [Authorize]
@@ -102,8 +107,7 @@ namespace CineTraker.Controllers
                 .Take(5)
                 .ToListAsync();
 
-            return Ok(recentMaps);
+            return Ok(recentMaps.Select(m => m.ToDto()).ToList());
         }
     }
 }
-

@@ -1,0 +1,30 @@
+@using CineTraker.Shared
+
+<div class="movie-card" @onclick="OnClickCallback">
+    <div class="poster-container shadow">
+        <img src="@Movie.SafePosterUrl" class="card-img-top rounded-top" onerror="this.src='https://placehold.co/300x450?text=Sin+Poster'" alt="@Movie.Title">
+        @if (!string.IsNullOrEmpty(Movie.ImdbRating) && Movie.ImdbRating != "N/A")
+        {
+            <div class="imdb-rating-badge">
+                <i class="bi bi-star-fill text-warning me-1"></i> @Movie.ImdbRating
+            </div>
+        }
+    </div>
+    <div class="card-info px-2 pt-3 pb-2 text-center">
+        <h6 class="text-truncate mb-0 fw-bold text-light title-text">@Movie.Title</h6>
+        <span class="text-muted small">@Movie.Year</span>
+    </div>
+</div>
+
+@code {
+    [Parameter] public Movie Movie { get; set; } = default!;
+    [Parameter] public EventCallback<Movie> OnClick { get; set; }
+
+    private async Task OnClickCallback()
+    {
+        if (OnClick.HasDelegate)
+        {
+            await OnClick.InvokeAsync(Movie);
+        }
+    }
+}

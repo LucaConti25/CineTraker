@@ -69,19 +69,20 @@
         }
 
         const opcionesGrafo = {
+            interaction: { hover: true, hoverConnectedEdges: true },
             physics: {
                 enabled: true,
                 solver: 'repulsion',
                 repulsion: {
-                    nodeDistance: 180,
-                    springLength: 200,
+                    nodeDistance: 250,
+                    springLength: 250,
                     springConstant: 0.01,
                     damping: 0.9
                 },
                 stabilization: { iterations: 50 }
             },
-            nodes: { borderWidth: 3, shadow: true },
-            edges: { width: 2, shadow: true, arrows: 'to' }
+            nodes: { borderWidth: 3, shadow: { enabled: true, color: 'rgba(0,0,0,0.8)', size: 15 } },
+            edges: { width: 2, shadow: { enabled: true, color: 'rgba(0,0,0,0.8)', size: 10 }, arrows: 'to' }
         };
 
         window.inicializarGrafo = (data, dotNetHelper) => {
@@ -127,6 +128,34 @@
                     dotNetReference.invokeMethodAsync('GuardarMovimientoManual');
                 }
             });
+
+            network.on("hoverNode", function (params) {
+                const nodeId = params.node;
+                const nodoHovered = nodes.get(nodeId);
+                const tooltip = document.getElementById("custom-tooltip");
+                if (nodoHovered && tooltip) {
+                    // Colores según grupo
+                    const colorTitulo = nodoHovered.grupo === "Continuidad" ? "#00bcd4" : (nodoHovered.grupo === "Ruptura" ? "#ff5722" : "#ffc107");
+                    
+                    tooltip.innerHTML = `
+                        <div style="font-weight: 800; font-size: 1.1rem; color: ${colorTitulo}; margin-bottom: 2px;">${nodoHovered.label}</div>
+                        <div style="font-size: 0.85rem; color: #ccc; text-transform: uppercase; letter-spacing: 1px;">${nodoHovered.grupo}</div>
+                    `;
+                    tooltip.style.display = "block";
+                    tooltip.style.opacity = "1";
+                    
+                    tooltip.style.left = (params.pointer.DOM.x + 15) + "px";
+                    tooltip.style.top = (params.pointer.DOM.y + 15) + "px";
+                }
+            });
+
+            network.on("blurNode", function (params) {
+                const tooltip = document.getElementById("custom-tooltip");
+                if (tooltip) {
+                    tooltip.style.display = "none";
+                    tooltip.style.opacity = "0";
+                }
+            });
         }
 
         // NUEVO: Agregamos el parámetro 'nivel' para guardarlo en el nodo
@@ -145,9 +174,10 @@
             return {
                 id: id,
                 label: titulo,
+                grupo: grupo, // Lo guardamos explícitamente para el tooltip
                 shape: 'circularImage',
                 image: posterUrl,
-                size: esSemilla ? 40 : 25,
+                size: esSemilla ? 50 : 35,
                 color: {
                     border: yaExpandido ? "#ffc107" : (esVisto ? "#6c757d" : (esSemilla ? "#0078d4" : "#28a745")),
                     background: "#1a1a1a"
@@ -155,10 +185,10 @@
                 imagePadding: 0,
                 shapeProperties: { useImageSize: false },
                 chosen: true,
-                font: { color: '#ffffff', strokeWidth: 2, strokeColor: '#000000' },
+                font: { color: '#ffffff', strokeWidth: 3, strokeColor: '#000000', size: 16, face: 'sans-serif' },
                 opacity: (esVisto || yaExpandido) ? 0.6 : 1,
                 expandido: yaExpandido,
-                nivel: nivelActual, // Guardamos el nivel en la memoria del nodo
+                nivel: nivelActual, 
 
                 x: esSemilla ? 0 : (n.x || undefined),
                 y: esSemilla ? 0 : (n.y || undefined),
@@ -173,11 +203,15 @@
             const relacion = e.relacion || e.Relacion;
             const colorArista = getColorArista(nivel); // Buscamos el color en la paleta
 
+            const isRuptura = relacion === "Cambio de aires";
+
             return {
                 from: source,
                 to: target,
                 label: relacion,
-                color: { color: colorArista, highlight: colorArista, hover: colorArista } // Aplicamos el color
+                color: { color: colorArista, highlight: colorArista, hover: colorArista }, // Aplicamos el color
+                dashes: isRuptura, // Ruptura es línea punteada
+                width: isRuptura ? 2 : 4 // Continuidad es más gruesa
             };
         }
 
@@ -185,53 +219,99 @@
             const nuevosNodosRaw = nuevoGrafo.nodos || nuevoGrafo.Nodos;
             const nuevasAristasRaw = nuevoGrafo.aristas || nuevoGrafo.Aristas;
 
-            let padreX = 0;
-            let padreY = 0;
-            let padreNivel = 0; // Buscamos en qué nivel estaba el padre
+            if (nuevasAristasRaw.length === 0) return;
 
-            if (nuevasAristasRaw.length > 0) {
-                const parentId = nuevasAristasRaw[0].sourceId || nuevasAristasRaw[0].SourceId;
-                const parentPos = network.getPositions([parentId])[parentId];
-                const nodoPadre = nodes.get(parentId);
+            const parentId = nuevasAristasRaw[0].sourceId || nuevasAristasRaw[0].SourceId;
+            const parentPos = network.getPositions([parentId])[parentId];
+            const nodoPadre = nodes.get(parentId);
 
-                if (parentPos) {
-                    padreX = parentPos.x;
-                    padreY = parentPos.y;
+            if (!parentPos || !nodoPadre) return;
+
+            const padreX = parentPos.x;
+            const padreY = parentPos.y;
+            const nuevoNivel = (nodoPadre.nivel || 0) + 1;
+
+            // 1. Calcular angulo base (desde abuelo a padre)
+            let anguloBase = 0;
+            const edgeHaciaPadre = edges.get({ filter: e => e.to === parentId });
+            if (edgeHaciaPadre.length > 0) {
+                const abueloId = edgeHaciaPadre[0].from;
+                const abueloPos = network.getPositions([abueloId])[abueloId];
+                if (abueloPos) {
+                    anguloBase = Math.atan2(padreY - abueloPos.y, padreX - abueloPos.x);
+                } else {
+                    anguloBase = Math.atan2(padreY, padreX);
                 }
-                if (nodoPadre) {
-                    padreNivel = nodoPadre.nivel || 0;
-                }
+            } else if (padreX !== 0 || padreY !== 0) {
+                anguloBase = Math.atan2(padreY, padreX);
             }
 
-            const nuevoNivel = padreNivel + 1; // Los hijos van a tener un nivel más que el padre
+            // 2. Agregar los nodos nuevos al dataset
+            const nodosAAgregar = [];
+            const aristasAAgregar = [];
 
-            nuevosNodosRaw.forEach((n, index) => {
+            nuevosNodosRaw.forEach((n) => {
                 const id = n.id || n.Id;
                 if (!nodes.get(id)) {
-                    let nodoNuevo = transformarNodo(n, nuevoNivel); // Nace con el nuevo nivel
-                    const angulo = (2 * Math.PI / nuevosNodosRaw.length) * index;
-                    const radio = 200;
-                    nodoNuevo.x = padreX + radio * Math.cos(angulo);
-                    nodoNuevo.y = padreY + radio * Math.sin(angulo);
-                    nodes.add(nodoNuevo);
+                    let nodoNuevo = transformarNodo(n, nuevoNivel); 
+                    nodoNuevo.fixed = false; 
+                    nodosAAgregar.push(nodoNuevo);
                 }
             });
 
             nuevasAristasRaw.forEach(e => {
                 const source = e.sourceId || e.SourceId;
                 const target = e.targetId || e.TargetId;
-                const exists = edges.get({
-                    filter: (item) => item.from === source && item.to === target
-                });
+                const exists = edges.get({ filter: (item) => item.from === source && item.to === target });
                 if (exists.length === 0) {
-                    edges.add(transformarArista(e, nuevoNivel)); // La flecha se pinta del nuevo nivel
+                    aristasAAgregar.push(transformarArista(e, nuevoNivel)); 
                 }
             });
 
-            network.setOptions({ physics: { enabled: true } });
-            network.once("stabilized", function () {
-                network.setOptions({ physics: { enabled: false } });
-            });
+            nodes.add(nodosAAgregar);
+            edges.add(aristasAAgregar);
+
+            // 3. Reacomodar a TODOS los hijos de este padre en un abanico
+            const todosLosHijosEdges = edges.get({ filter: e => e.from === parentId });
+            const hijosIds = todosLosHijosEdges.map(e => e.to);
+            
+            if (hijosIds.length > 0) {
+                // A mayor cantidad de hijos, más abrimos el abanico para que no se encimen
+                const spread = hijosIds.length > 3 ? Math.PI : (Math.PI / 1.5); 
+                const radioRadial = 250; 
+                
+                const actualizaciones = [];
+                hijosIds.forEach((hijoId, index) => {
+                    let anguloCálculo = anguloBase;
+                    if (padreX === 0 && padreY === 0) {
+                        // Si es la semilla, repartimos en 360 grados
+                        anguloCálculo = (2 * Math.PI / hijosIds.length) * index;
+                    } else if (hijosIds.length > 1) {
+                        // Distribuimos equitativamente a lo largo del 'spread'
+                        const offset = (index / (hijosIds.length - 1)) * spread - (spread / 2);
+                        anguloCálculo += offset;
+                    }
+
+                    actualizaciones.push({
+                        id: hijoId,
+                        x: padreX + radioRadial * Math.cos(anguloCálculo),
+                        y: padreY + radioRadial * Math.sin(anguloCálculo)
+                    });
+                });
+                
+                nodes.update(actualizaciones);
+            }
+        };
+
+        window.centrarMapa = () => {
+            if (network) {
+                network.fit({
+                    animation: {
+                        duration: 800,
+                        easingFunction: "easeInOutQuad"
+                    }
+                });
+            }
         };
 
         window.marcarNodoComoExpandido = (id) => {
@@ -273,7 +353,20 @@
 
             const data = JSON.parse(jsonString);
 
-            nodes = new vis.DataSet(data.nodos);
+            // Sanitización de mapas viejos que traían el 'title' (tooltip feo) y no tenían 'grupo'
+            const nodosSaneados = (data.nodos || []).map(n => {
+                if (n.title) {
+                    if (!n.grupo) {
+                        const match = n.title.match(/<i>(.*?)<\/i>/);
+                        n.grupo = match ? match[1] : (n.grupo || "Central");
+                    }
+                    delete n.title;
+                }
+                if (!n.grupo && n.id === data.nodos[0]?.id) n.grupo = "Central";
+                return n;
+            });
+
+            nodes = new vis.DataSet(nodosSaneados);
             edges = new vis.DataSet(data.aristas);
 
             const configCarga = { ...opcionesGrafo, physics: { enabled: false } };
